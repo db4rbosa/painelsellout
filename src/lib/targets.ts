@@ -45,12 +45,14 @@ const quarterOf = (month: number) => Math.min(4, Math.max(1, Math.ceil(month / 3
 export function buildAttainment(rows: SalesRow[], targets: Targets) {
   const actualByMonth = new Array(12).fill(0) as number[];
   for (const r of rows) {
-    if (r.fiscalMonth >= 1 && r.fiscalMonth <= 12) actualByMonth[r.fiscalMonth - 1] += r.revenue;
+    const idx = r.fiscalMonth - 1;
+    if (idx >= 0 && idx < 12) actualByMonth[idx] = (actualByMonth[idx] ?? 0) + r.revenue;
   }
   const quarterTarget = (q: number) => targets.quarters[q - 1] ?? 0;
   const actualByQuarter = [0, 0, 0, 0];
   actualByMonth.forEach((v, i) => {
-    actualByQuarter[quarterOf(i + 1) - 1] += v;
+      const qi = quarterOf(i + 1) - 1;
+    actualByQuarter[qi] = (actualByQuarter[qi] ?? 0) + v;
   });
 
   const labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
