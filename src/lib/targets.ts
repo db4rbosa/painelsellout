@@ -47,26 +47,34 @@ export function buildAttainment(rows: SalesRow[], targets: Targets) {
   for (const r of rows) {
     if (r.fiscalMonth >= 1 && r.fiscalMonth <= 12) actualByMonth[r.fiscalMonth - 1] += r.revenue;
   }
+  const quarterTarget = (q: number) => targets.quarters[q - 1] ?? 0;
   const actualByQuarter = [0, 0, 0, 0];
   actualByMonth.forEach((v, i) => {
     actualByQuarter[quarterOf(i + 1) - 1] += v;
   });
 
-  const monthlyTargets = actualByMonth.map((_, i) => targets.quarters[quarterOf(i + 1) - 1] / 3);
+  const labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthlyTargets = actualByMonth.map((_, i) => quarterTarget(quarterOf(i + 1)) / 3);
 
-  const months: AttainmentRow[] = actualByMonth.map((actual, i) => ({
-    label: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][i],
-    actual,
-    target: monthlyTargets[i],
-    attainment: monthlyTargets[i] > 0 ? actual / monthlyTargets[i] : null,
-  }));
+  const months: AttainmentRow[] = actualByMonth.map((actual, i) => {
+    const target = monthlyTargets[i] ?? 0;
+    return {
+      label: labels[i] ?? String(i + 1),
+      actual,
+      target,
+      attainment: target > 0 ? actual / target : null,
+    };
+  });
 
-  const quarters: AttainmentRow[] = actualByQuarter.map((actual, i) => ({
-    label: `Q${i + 1}`,
-    actual,
-    target: targets.quarters[i],
-    attainment: targets.quarters[i] > 0 ? actual / targets.quarters[i] : null,
-  }));
+  const quarters: AttainmentRow[] = actualByQuarter.map((actual, i) => {
+    const target = quarterTarget(i + 1);
+    return {
+      label: `Q${i + 1}`,
+      actual,
+      target,
+      attainment: target > 0 ? actual / target : null,
+    };
+  });
 
   const half = (from: number, to: number, label: string): AttainmentRow => {
     const actual = actualByQuarter.slice(from, to).reduce((a, b) => a + b, 0);

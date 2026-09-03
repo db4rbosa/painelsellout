@@ -105,7 +105,8 @@ export async function parseWorkbook(file: File): Promise<SalesRow[]> {
   const XLSX = await import("xlsx");
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { dense: true });
-  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const sheetName = wb.SheetNames[0]!;
+  const sheet = wb.Sheets[sheetName]!;
   const raw = XLSX.utils.sheet_to_json<RawRow>(sheet, { defval: null });
   return normalizeRows(raw);
 }

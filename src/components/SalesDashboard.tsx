@@ -64,7 +64,7 @@ export function SalesDashboard() {
   const people = useMemo(() => (rows.length ? uniqueValues(rows, personDim) : []), [rows, personDim]);
 
   useEffect(() => {
-    if (people.length && !people.includes(person)) setPerson(people[0]);
+    if (people.length && !people.includes(person)) setPerson(people[0] ?? "");
   }, [people, person]);
 
   const scopedRows = useMemo(

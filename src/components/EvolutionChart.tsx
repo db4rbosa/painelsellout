@@ -74,8 +74,8 @@ export function EvolutionChart({ data, keys, type, stacked, valueFormatter }: Pr
               <Bar
                 key={k}
                 dataKey={k}
-                stackId={stacked ? "a" : undefined}
-                fill={PALETTE[i % PALETTE.length]}
+                {...(stacked ? { stackId: "a" } : {})}
+                fill={PALETTE[i % PALETTE.length]!}
                 radius={[3, 3, 0, 0]}
               />
             ))}
@@ -88,7 +88,7 @@ export function EvolutionChart({ data, keys, type, stacked, valueFormatter }: Pr
                 key={k}
                 type="monotone"
                 dataKey={k}
-                stroke={PALETTE[i % PALETTE.length]}
+                stroke={PALETTE[i % PALETTE.length]!}
                 strokeWidth={2}
                 dot={false}
               />
@@ -99,8 +99,8 @@ export function EvolutionChart({ data, keys, type, stacked, valueFormatter }: Pr
             <defs>
               {keys.map((k, i) => (
                 <linearGradient key={k} id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={PALETTE[i % PALETTE.length]} stopOpacity={0.55} />
-                  <stop offset="100%" stopColor={PALETTE[i % PALETTE.length]} stopOpacity={0.05} />
+                  <stop offset="0%" stopColor={PALETTE[i % PALETTE.length]!} stopOpacity={0.55} />
+                  <stop offset="100%" stopColor={PALETTE[i % PALETTE.length]!} stopOpacity={0.05} />
                 </linearGradient>
               ))}
             </defs>
@@ -110,8 +110,8 @@ export function EvolutionChart({ data, keys, type, stacked, valueFormatter }: Pr
                 key={k}
                 type="monotone"
                 dataKey={k}
-                stackId={stacked ? "a" : undefined}
-                stroke={PALETTE[i % PALETTE.length]}
+                {...(stacked ? { stackId: "a" } : {})}
+                stroke={PALETTE[i % PALETTE.length]!}
                 strokeWidth={2}
                 fill={`url(#grad-${i})`}
               />
