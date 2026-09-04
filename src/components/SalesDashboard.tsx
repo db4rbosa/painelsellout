@@ -141,11 +141,12 @@ export function SalesDashboard() {
             compare o atingimento contra suas metas anual e trimestral.
           </p>
         </div>
-        <label className="cursor-pointer">
+        <label className="relative cursor-pointer">
           <input
             type="file"
             accept=".xlsx,.xls,.csv"
-            className="hidden"
+            aria-label="Importar planilha"
+            className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
             onChange={(e) => handleFile(e.target.files?.[0])}
           />
           <span className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">
@@ -174,11 +175,12 @@ export function SalesDashboard() {
                 enviado para servidores.
               </p>
             </div>
-            <label className="cursor-pointer">
+            <label className="relative cursor-pointer">
               <input
                 type="file"
                 accept=".xlsx,.xls,.csv"
-                className="hidden"
+                aria-label="Selecionar arquivo da planilha"
+                className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
                 onChange={(e) => handleFile(e.target.files?.[0])}
               />
               <span className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary px-4 py-2 text-sm font-medium hover:bg-muted">

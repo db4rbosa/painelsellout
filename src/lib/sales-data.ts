@@ -72,30 +72,45 @@ const str = (v: unknown): string => {
 
 type RawRow = Record<string, unknown>;
 
-export function normalizeRows(raw: RawRow[]): SalesRow[] {
-  return raw
+const pick = (r: RawRow, ...names: string[]): unknown => {
+  for (const n of names) {
+    const v = r[n.toLowerCase()];
+    if (v !== undefined) return v;
+  }
+  return undefined;
+};
+
+const normalizeKeys = (r: RawRow): RawRow => {
+  const out: RawRow = {};
+  for (const [k, v] of Object.entries(r)) out[k.trim().toLowerCase()] = v;
+  return out;
+};
+
+export function normalizeRows(rawRows: RawRow[]): SalesRow[] {
+  return rawRows
+    .map(normalizeKeys)
     .map((r) => {
-      const month = num(r["Fiscal Month"]);
+      const month = num(pick(r, "Fiscal Month"));
       return {
-        fiscalYear: num(r["Fiscal Year"]),
-        fiscalQuarter: num(r["Fiscal Quarter"]) || Math.ceil(month / 3) || 1,
+        fiscalYear: num(pick(r, "Fiscal Year")),
+        fiscalQuarter: num(pick(r, "Fiscal Quarter")) || Math.ceil(month / 3) || 1,
         fiscalMonth: month,
-        fiscalWeek: num(r["Fiscal Week"]),
-        monthLabel: str(r["Months"]) !== "—" ? str(r["Months"]) : (MONTH_LABELS[month - 1] ?? "—"),
-        lob: str(r["Line of Business"]),
-        disti: str(r["Disti Std Name"]),
-        reseller: str(r["Reseller"]),
-        billTo: str(r["Bill To HQ - Name"] ?? r["Bill to Name"]),
-        shipTo: str(r["Ship to Name"]),
-        endUser: str(r["End User"]),
-        sku: str(r["Validated SKU Code"]),
-        cbm: str(r["CBM"]),
-        account: str(r["Account"]),
-        segment: str(r["VENDEDORES"]),
-        state: str(r["Bill To HQ - State"]),
-        city: str(r["Bill To HQ - City"]),
-        revenue: num(r["Extended Net Price USD"]),
-        quantity: num(r["Quantity"]),
+        fiscalWeek: num(pick(r, "Fiscal Week")),
+        monthLabel: str(pick(r, "Months")) !== "—" ? str(pick(r, "Months")) : (MONTH_LABELS[month - 1] ?? "—"),
+        lob: str(pick(r, "Line of Business")),
+        disti: str(pick(r, "Disti Std Name")),
+        reseller: str(pick(r, "Reseller")),
+        billTo: str(pick(r, "Bill To HQ - Name", "Bill to Name")),
+        shipTo: str(pick(r, "Ship to Name")),
+        endUser: str(pick(r, "End User")),
+        sku: str(pick(r, "Validated SKU Code")),
+        cbm: str(pick(r, "CBM")),
+        account: str(pick(r, "Account")),
+        segment: str(pick(r, "VENDEDORES")),
+        state: str(pick(r, "Bill To HQ - State")),
+        city: str(pick(r, "Bill To HQ - City")),
+        revenue: num(pick(r, "Extended Net Price USD")),
+        quantity: num(pick(r, "Quantity")),
       } satisfies SalesRow;
     })
     .filter((r) => r.fiscalMonth > 0);
