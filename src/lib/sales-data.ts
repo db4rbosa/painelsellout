@@ -96,7 +96,10 @@ export function normalizeRows(rawRows: RawRow[]): SalesRow[] {
         fiscalQuarter: num(pick(r, "Fiscal Quarter")) || Math.ceil(month / 3) || 1,
         fiscalMonth: month,
         fiscalWeek: num(pick(r, "Fiscal Week")),
-        monthLabel: str(pick(r, "Months")) !== "—" ? str(pick(r, "Months")) : (MONTH_LABELS[month - 1] ?? "—"),
+        monthLabel:
+          str(pick(r, "Months")) !== "—"
+            ? str(pick(r, "Months"))
+            : (MONTH_LABELS[month - 1] ?? "—"),
         lob: str(pick(r, "Line of Business")),
         disti: str(pick(r, "Disti Std Name")),
         reseller: str(pick(r, "Reseller")),
@@ -128,6 +131,45 @@ export async function parseWorkbook(file: File): Promise<SalesRow[]> {
 
 export const uniqueValues = (rows: SalesRow[], key: DimensionKey): string[] =>
   Array.from(new Set(rows.map((r) => r[key]))).sort((a, b) => a.localeCompare(b));
+
+export const FILTER_DIMS = ["billTo", "reseller", "shipTo", "endUser", "disti"] as const;
+export type FilterKey = (typeof FILTER_DIMS)[number];
+
+export const FILTER_LABELS: Record<FilterKey, string> = {
+  billTo: "Bill To HQ - Name",
+  reseller: "Reseller",
+  shipTo: "Ship to Name",
+  endUser: "End User",
+  disti: "Disti Std Name",
+};
+
+export type Filters = Record<FilterKey, string[]>;
+
+export const emptyFilters = (): Filters => ({
+  billTo: [],
+  reseller: [],
+  shipTo: [],
+  endUser: [],
+  disti: [],
+});
+
+export const countActiveFilters = (f: Filters) =>
+  FILTER_DIMS.reduce((acc, k) => acc + (f[k].length ? 1 : 0), 0);
+
+export function filterRows(rows: SalesRow[], accounts: string[], filters: Filters): SalesRow[] {
+  const accountSet = accounts.length ? new Set(accounts) : null;
+  const sets = FILTER_DIMS.map(
+    (k) => [k, filters[k].length ? new Set(filters[k]) : null] as const,
+  ).filter(([, s]) => s !== null) as [FilterKey, Set<string>][];
+
+  if (!accountSet && !sets.length) return rows;
+
+  return rows.filter((r) => {
+    if (accountSet && !accountSet.has(r.account)) return false;
+    for (const [k, s] of sets) if (!s.has(r[k])) return false;
+    return true;
+  });
+}
 
 export const periodKey = (row: SalesRow, g: Granularity): string =>
   g === "month"

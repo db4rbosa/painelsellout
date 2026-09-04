@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { NumberInput } from "@/components/NumberInput";
 import { fmtPct, fmtUSD } from "@/lib/sales-data";
 import type { AttainmentRow, Targets } from "@/lib/targets";
 
@@ -34,7 +34,7 @@ function AttainmentCard({ row, big = false }: { row: AttainmentRow; big?: boolea
 }
 
 type Props = {
-  person: string;
+  accounts: string[];
   targets: Targets;
   onChange: (t: Targets) => void;
   attainment: {
@@ -45,47 +45,44 @@ type Props = {
   };
 };
 
-export function TargetPanel({ person, targets, onChange, attainment }: Props) {
+export function TargetPanel({ accounts, targets, onChange, attainment }: Props) {
   const quartersSum = targets.quarters.reduce((a, b) => a + b, 0);
   const monthsWithData = attainment.months.filter((m) => m.actual > 0 || m.target > 0);
+  const groupLabel = accounts.length ? accounts.join(" + ") : "todos os accounts";
 
   return (
     <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Minhas metas — {person}</CardTitle>
+          <CardTitle className="text-base">Metas do grupo</CardTitle>
+          <p className="text-sm text-muted-foreground">{groupLabel}</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="annual">Meta anual (USD)</Label>
-            <Input
+            <NumberInput
               id="annual"
-              type="number"
-              min={0}
-              value={targets.annual || ""}
-              placeholder="0"
-              onChange={(e) => onChange({ ...targets, annual: Number(e.target.value) || 0 })}
+              value={targets.annual}
+              onChange={(v) => onChange({ ...targets, annual: v })}
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             {targets.quarters.map((q, i) => (
               <div key={i} className="space-y-2">
                 <Label htmlFor={`q${i}`}>Meta Q{i + 1}</Label>
-                <Input
+                <NumberInput
                   id={`q${i}`}
-                  type="number"
-                  min={0}
-                  value={q || ""}
-                  placeholder="0"
-                  onChange={(e) => {
+                  value={q}
+                  onChange={(v) => {
                     const quarters = [...targets.quarters] as Targets["quarters"];
-                    quarters[i] = Number(e.target.value) || 0;
+                    quarters[i] = v;
                     onChange({ ...targets, quarters });
                   }}
                 />
               </div>
             ))}
           </div>
+
           <button
             type="button"
             className="w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
