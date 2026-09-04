@@ -23,20 +23,31 @@ import {
 } from "@/components/ui/table";
 import { EvolutionChart } from "@/components/EvolutionChart";
 import { TargetPanel } from "@/components/TargetPanel";
+import { MultiSelectFilter } from "@/components/MultiSelectFilter";
 import {
   DIMENSIONS,
+  FILTER_DIMS,
+  FILTER_LABELS,
   buildSeries,
+  countActiveFilters,
+  emptyFilters,
+  filterRows,
   fmtUSD,
   parseWorkbook,
   sum,
   uniqueValues,
   type DimensionKey,
+  type Filters,
   type Granularity,
   type SalesRow,
 } from "@/lib/sales-data";
-import { buildAttainment, emptyTargets, loadTargets, saveTargets, type Targets } from "@/lib/targets";
-
-const PERSON_DIMS: DimensionKey[] = ["account", "cbm"];
+import {
+  buildAttainment,
+  emptyTargets,
+  loadTargets,
+  saveTargets,
+  type Targets,
+} from "@/lib/targets";
 
 export function SalesDashboard() {
   const [rows, setRows] = useState<SalesRow[]>([]);
@@ -44,9 +55,8 @@ export function SalesDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [personDim, setPersonDim] = useState<DimensionKey>("account");
-  const [person, setPerson] = useState<string>("");
-  const [onlyMine, setOnlyMine] = useState(true);
+  const [accounts, setAccounts] = useState<string[]>([]);
+  const [filters, setFilters] = useState<Filters>(emptyFilters());
 
   const [groupBy, setGroupBy] = useState<DimensionKey | "none">("lob");
   const [granularity, setGranularity] = useState<Granularity>("month");
@@ -58,24 +68,22 @@ export function SalesDashboard() {
   const [targets, setTargets] = useState<Targets>(emptyTargets());
 
   useEffect(() => {
-    if (person) setTargets(loadTargets(person));
-  }, [person]);
+    setTargets(accounts.length ? loadTargets(accounts) : emptyTargets());
+  }, [accounts]);
 
-  const people = useMemo(() => (rows.length ? uniqueValues(rows, personDim) : []), [rows, personDim]);
+  const accountOptions = useMemo(() => (rows.length ? uniqueValues(rows, "account") : []), [rows]);
 
-  useEffect(() => {
-    if (people.length && !people.includes(person)) setPerson(people[0] ?? "");
-  }, [people, person]);
+  const scopedRows = useMemo(() => filterRows(rows, accounts, filters), [rows, accounts, filters]);
 
-  const scopedRows = useMemo(
-    () => (onlyMine && person ? rows.filter((r) => r[personDim] === person) : rows),
-    [rows, onlyMine, person, personDim],
-  );
-
-  const myRows = useMemo(
-    () => (person ? rows.filter((r) => r[personDim] === person) : []),
-    [rows, person, personDim],
-  );
+  const filterOptions = useMemo(() => {
+    const base = filterRows(rows, accounts, emptyFilters());
+    return Object.fromEntries(
+      FILTER_DIMS.map((k) => {
+        const others: Filters = { ...emptyFilters(), ...filters, [k]: [] };
+        return [k, uniqueValues(filterRows(base, [], others), k)];
+      }),
+    ) as Record<(typeof FILTER_DIMS)[number], string[]>;
+  }, [rows, accounts, filters]);
 
   const series = useMemo(
     () => buildSeries(scopedRows, groupBy, granularity, metric, topN),
@@ -99,10 +107,11 @@ export function SalesDashboard() {
       .slice(0, 25);
   }, [scopedRows, groupBy]);
 
-  const attainment = useMemo(() => buildAttainment(myRows, targets), [myRows, targets]);
+  const attainment = useMemo(() => buildAttainment(scopedRows, targets), [scopedRows, targets]);
 
   const totalRevenue = useMemo(() => sum(scopedRows), [scopedRows]);
   const totalQty = useMemo(() => sum(scopedRows, "quantity"), [scopedRows]);
+  const activeFilters = countActiveFilters(filters);
 
   const handleFile = async (file?: File | null) => {
     if (!file) return;
@@ -112,6 +121,8 @@ export function SalesDashboard() {
       const parsed = await parseWorkbook(file);
       if (!parsed.length) throw new Error("Nenhuma linha válida encontrada na planilha.");
       setRows(parsed);
+      setAccounts([]);
+      setFilters(emptyFilters());
       setFileName(file.name);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível ler o arquivo.");
@@ -122,7 +133,7 @@ export function SalesDashboard() {
 
   const updateTargets = (t: Targets) => {
     setTargets(t);
-    if (person) saveTargets(person, t);
+    if (accounts.length) saveTargets(accounts, t);
   };
 
   const valueFormatter = (v: number) =>
@@ -195,12 +206,17 @@ export function SalesDashboard() {
             {[
               { label: "Receita no escopo", value: fmtUSD(totalRevenue) },
               { label: "Quantidade", value: new Intl.NumberFormat("pt-BR").format(totalQty) },
-              { label: "Linhas importadas", value: new Intl.NumberFormat("pt-BR").format(rows.length) },
+              {
+                label: "Linhas importadas",
+                value: new Intl.NumberFormat("pt-BR").format(rows.length),
+              },
               { label: "Arquivo", value: fileName },
             ].map((k) => (
               <Card key={k.label}>
                 <CardContent className="py-5">
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground">{k.label}</p>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                    {k.label}
+                  </p>
                   <p className="mt-1 truncate font-display text-xl font-semibold">{k.value}</p>
                 </CardContent>
               </Card>
@@ -209,52 +225,42 @@ export function SalesDashboard() {
 
           <Card className="mb-6">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Filter className="size-4 text-primary" /> Escopo
+              <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+                <Filter className="size-4 text-primary" /> Escopo e filtros
+                <Badge variant="secondary">{scopedRows.length} linhas no escopo</Badge>
+                {accounts.length || activeFilters ? (
+                  <button
+                    type="button"
+                    className="ml-auto text-xs text-muted-foreground underline-offset-2 hover:underline"
+                    onClick={() => {
+                      setAccounts([]);
+                      setFilters(emptyFilters());
+                    }}
+                  >
+                    limpar tudo
+                  </button>
+                ) : null}
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-4">
-              <div className="space-y-2">
-                <Label>Campo de vendedor</Label>
-                <Select
-                  value={personDim}
-                  onValueChange={(v) => setPersonDim(v as DimensionKey)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PERSON_DIMS.map((d) => (
-                      <SelectItem key={d} value={d}>
-                        {DIMENSIONS.find((x) => x.key === d)?.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Meu nome</Label>
-                <Select value={person} onValueChange={setPerson}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {people.map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {p}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-3 md:col-span-2">
-                <Switch id="mine" checked={onlyMine} onCheckedChange={setOnlyMine} />
-                <Label htmlFor="mine" className="cursor-pointer">
-                  Gráficos apenas com minha carteira
-                </Label>
-                <Badge variant="secondary">
-                  {onlyMine ? `${scopedRows.length} linhas` : "todas as linhas"}
-                </Badge>
+            <CardContent className="space-y-4">
+              <MultiSelectFilter
+                label="Accounts (vendedores)"
+                options={accountOptions}
+                selected={accounts}
+                onChange={setAccounts}
+                placeholder="Todos os accounts"
+                showChips
+              />
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                {FILTER_DIMS.map((k) => (
+                  <MultiSelectFilter
+                    key={k}
+                    label={FILTER_LABELS[k]}
+                    options={filterOptions[k]}
+                    selected={filters[k]}
+                    onChange={(values) => setFilters((f) => ({ ...f, [k]: values }))}
+                  />
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -293,7 +299,10 @@ export function SalesDashboard() {
                   </div>
                   <div className="space-y-2">
                     <Label>Período</Label>
-                    <Select value={granularity} onValueChange={(v) => setGranularity(v as Granularity)}>
+                    <Select
+                      value={granularity}
+                      onValueChange={(v) => setGranularity(v as Granularity)}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -418,7 +427,7 @@ export function SalesDashboard() {
 
             <TabsContent value="metas" className="mt-6">
               <TargetPanel
-                person={person || "—"}
+                accounts={accounts}
                 targets={targets}
                 onChange={updateTargets}
                 attainment={attainment}

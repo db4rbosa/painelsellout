@@ -6,27 +6,32 @@ const STORAGE_KEY = "sales-out-targets-v1";
 
 export const emptyTargets = (): Targets => ({ annual: 0, quarters: [0, 0, 0, 0] });
 
-export function loadTargets(person: string): Targets {
-  if (typeof window === "undefined") return emptyTargets();
+export const groupKey = (accounts: string[]): string =>
+  [...accounts].sort((a, b) => a.localeCompare(b)).join(" | ");
+
+const readAll = (): Record<string, Targets> => {
+  if (typeof window === "undefined") return {};
   try {
-    const all = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "{}") as Record<
-      string,
-      Targets
-    >;
-    return all[person] ?? emptyTargets();
+    return JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "{}") as Record<string, Targets>;
   } catch {
-    return emptyTargets();
+    return {};
   }
+};
+
+export function loadTargets(accounts: string[]): Targets {
+  if (!accounts.length) return emptyTargets();
+  const all = readAll();
+  const first = accounts[0];
+  const found =
+    all[groupKey(accounts)] ?? (accounts.length === 1 && first ? all[first] : undefined);
+  return found ?? emptyTargets();
 }
 
-export function saveTargets(person: string, targets: Targets) {
-  if (typeof window === "undefined") return;
+export function saveTargets(accounts: string[], targets: Targets) {
+  if (typeof window === "undefined" || !accounts.length) return;
   try {
-    const all = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "{}") as Record<
-      string,
-      Targets
-    >;
-    all[person] = targets;
+    const all = readAll();
+    all[groupKey(accounts)] = targets;
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
   } catch {
     /* ignore */
@@ -51,11 +56,24 @@ export function buildAttainment(rows: SalesRow[], targets: Targets) {
   const quarterTarget = (q: number) => targets.quarters[q - 1] ?? 0;
   const actualByQuarter = [0, 0, 0, 0];
   actualByMonth.forEach((v, i) => {
-      const qi = quarterOf(i + 1) - 1;
+    const qi = quarterOf(i + 1) - 1;
     actualByQuarter[qi] = (actualByQuarter[qi] ?? 0) + v;
   });
 
-  const labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const labels = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
   const monthlyTargets = actualByMonth.map((_, i) => quarterTarget(quarterOf(i + 1)) / 3);
 
   const months: AttainmentRow[] = actualByMonth.map((actual, i) => {
@@ -87,7 +105,8 @@ export function buildAttainment(rows: SalesRow[], targets: Targets) {
   const h1 = half(0, 2, "1º Semestre (H1)");
   const h2 = half(2, 4, "2º Semestre (H2)");
   const totalActual = actualByQuarter.reduce((a, b) => a + b, 0);
-  const fyTarget = targets.annual > 0 ? targets.annual : targets.quarters.reduce((a, b) => a + b, 0);
+  const fyTarget =
+    targets.annual > 0 ? targets.annual : targets.quarters.reduce((a, b) => a + b, 0);
   const fullYear: AttainmentRow = {
     label: "Ano Fiscal (FY)",
     actual: totalActual,
