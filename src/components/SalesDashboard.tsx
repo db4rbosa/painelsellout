@@ -73,6 +73,19 @@ export function SalesDashboard() {
     setTargets(accounts.length ? loadTargets(accounts) : emptyTargets());
   }, [accounts]);
 
+  useEffect(() => {
+    const idle = (
+      window as Window & { requestIdleCallback?: (cb: () => void) => number }
+    ).requestIdleCallback;
+    if (idle) idle(() => void preloadWorkbookParser());
+    else {
+      const t = window.setTimeout(() => void preloadWorkbookParser(), 300);
+      return () => window.clearTimeout(t);
+    }
+    return undefined;
+  }, []);
+
+
   const accountOptions = useMemo(() => (rows.length ? uniqueValues(rows, "account") : []), [rows]);
 
   const scopedRows = useMemo(() => filterRows(rows, accounts, filters), [rows, accounts, filters]);
