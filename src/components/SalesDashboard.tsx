@@ -34,6 +34,8 @@ import {
   filterRows,
   fmtUSD,
   parseWorkbook,
+  preloadWorkbookParser,
+
   sum,
   uniqueValues,
   type DimensionKey,
