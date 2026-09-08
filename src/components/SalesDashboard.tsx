@@ -132,8 +132,10 @@ export function SalesDashboard() {
     if (!file) return;
     setLoading(true);
     setError("");
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
     try {
       const parsed = await parseWorkbook(file);
+
       if (!parsed.length) throw new Error("Nenhuma linha válida encontrada na planilha.");
       setRows(parsed);
       setAccounts([]);
