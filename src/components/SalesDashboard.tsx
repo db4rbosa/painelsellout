@@ -169,14 +169,19 @@ export function SalesDashboard() {
             compare o atingimento contra suas metas anual e trimestral.
           </p>
         </div>
-        <label className="relative cursor-pointer">
+        <label
+          className="relative cursor-pointer"
+          onPointerEnter={() => void preloadWorkbookParser()}
+        >
           <input
             type="file"
             accept=".xlsx,.xls,.csv"
             aria-label="Importar planilha"
             className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+            onFocus={() => void preloadWorkbookParser()}
             onChange={(e) => handleFile(e.target.files?.[0])}
           />
+
           <span className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">
             <Upload className="size-4" />
             {rows.length ? "Trocar planilha" : "Importar planilha"}
