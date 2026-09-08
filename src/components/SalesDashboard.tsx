@@ -208,14 +208,19 @@ export function SalesDashboard() {
                 enviado para servidores.
               </p>
             </div>
-            <label className="relative cursor-pointer">
+            <label
+              className="relative cursor-pointer"
+              onPointerEnter={() => void preloadWorkbookParser()}
+            >
               <input
                 type="file"
                 accept=".xlsx,.xls,.csv"
                 aria-label="Selecionar arquivo da planilha"
                 className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                onFocus={() => void preloadWorkbookParser()}
                 onChange={(e) => handleFile(e.target.files?.[0])}
               />
+
               <span className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary px-4 py-2 text-sm font-medium hover:bg-muted">
                 <Upload className="size-4" /> Selecionar arquivo
               </span>
