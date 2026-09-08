@@ -39,8 +39,8 @@ export const DIMENSIONS = [
   { key: "lob", label: "Linha de Negócio" },
   { key: "disti", label: "Distribuidor" },
   { key: "reseller", label: "Revenda" },
-  { key: "billTo", label: "Bill To" },
-  { key: "shipTo", label: "Ship To" },
+  { key: "billTo", label: "Revenda HQ" },
+  { key: "shipTo", label: "Destino Entrega" },
   { key: "endUser", label: "Cliente Final" },
   { key: "sku", label: "SKU" },
   { key: "cbm", label: "CBM" },
@@ -49,6 +49,7 @@ export const DIMENSIONS = [
   { key: "state", label: "Estado" },
   { key: "city", label: "Cidade" },
 ] as const;
+
 
 export type DimensionKey = (typeof DIMENSIONS)[number]["key"];
 
@@ -119,15 +120,89 @@ export function normalizeRows(rawRows: RawRow[]): SalesRow[] {
     .filter((r) => r.fiscalMonth > 0);
 }
 
+type XlsxModule = typeof import("xlsx");
+let xlsxPromise: Promise<XlsxModule> | null = null;
+
+export function preloadWorkbookParser(): Promise<XlsxModule> {
+  xlsxPromise ??= import("xlsx");
+  return xlsxPromise;
+}
+
 export async function parseWorkbook(file: File): Promise<SalesRow[]> {
-  const XLSX = await import("xlsx");
+  const XLSX = await preloadWorkbookParser();
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { dense: true });
   const sheetName = wb.SheetNames[0]!;
   const sheet = wb.Sheets[sheetName]!;
-  const raw = XLSX.utils.sheet_to_json<RawRow>(sheet, { defval: null });
-  return normalizeRows(raw);
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null });
+  if (!matrix.length) return [];
+
+  const header = (matrix[0] ?? []).map((h) => String(h ?? "").trim().toLowerCase());
+  const idx = new Map<string, number>();
+  header.forEach((h, i) => {
+    if (h && !idx.has(h)) idx.set(h, i);
+  });
+  const col = (...names: string[]): number => {
+    for (const n of names) {
+      const i = idx.get(n.toLowerCase());
+      if (i !== undefined) return i;
+    }
+    return -1;
+  };
+
+  const cYear = col("Fiscal Year");
+  const cQuarter = col("Fiscal Quarter");
+  const cMonth = col("Fiscal Month");
+  const cWeek = col("Fiscal Week");
+  const cMonths = col("Months");
+  const cLob = col("Line of Business");
+  const cDisti = col("Disti Std Name");
+  const cReseller = col("Reseller");
+  const cBillTo = col("Bill To HQ - Name", "Bill to Name");
+  const cShipTo = col("Ship to Name");
+  const cEndUser = col("End User");
+  const cSku = col("Validated SKU Code");
+  const cCbm = col("CBM");
+  const cAccount = col("Account");
+  const cSegment = col("VENDEDORES");
+  const cState = col("Bill To HQ - State");
+  const cCity = col("Bill To HQ - City");
+  const cRevenue = col("Extended Net Price USD");
+  const cQty = col("Quantity");
+
+  const out: SalesRow[] = [];
+  for (let i = 1; i < matrix.length; i++) {
+    const r = matrix[i];
+    if (!r) continue;
+    const at = (c: number): unknown => (c >= 0 ? r[c] : undefined);
+    const month = num(at(cMonth));
+    if (month <= 0) continue;
+    const label = str(at(cMonths));
+    out.push({
+      fiscalYear: num(at(cYear)),
+      fiscalQuarter: num(at(cQuarter)) || Math.ceil(month / 3) || 1,
+      fiscalMonth: month,
+      fiscalWeek: num(at(cWeek)),
+      monthLabel: label !== "—" ? label : (MONTH_LABELS[month - 1] ?? "—"),
+      lob: str(at(cLob)),
+      disti: str(at(cDisti)),
+      reseller: str(at(cReseller)),
+      billTo: str(at(cBillTo)),
+      shipTo: str(at(cShipTo)),
+      endUser: str(at(cEndUser)),
+      sku: str(at(cSku)),
+      cbm: str(at(cCbm)),
+      account: str(at(cAccount)),
+      segment: str(at(cSegment)),
+      state: str(at(cState)),
+      city: str(at(cCity)),
+      revenue: num(at(cRevenue)),
+      quantity: num(at(cQty)),
+    });
+  }
+  return out;
 }
+
 
 export const uniqueValues = (rows: SalesRow[], key: DimensionKey): string[] =>
   Array.from(new Set(rows.map((r) => r[key]))).sort((a, b) => a.localeCompare(b));
@@ -136,12 +211,13 @@ export const FILTER_DIMS = ["billTo", "reseller", "shipTo", "endUser", "disti"] 
 export type FilterKey = (typeof FILTER_DIMS)[number];
 
 export const FILTER_LABELS: Record<FilterKey, string> = {
-  billTo: "Bill To HQ - Name",
-  reseller: "Reseller",
-  shipTo: "Ship to Name",
-  endUser: "End User",
-  disti: "Disti Std Name",
+  billTo: "Revenda HQ",
+  reseller: "Revenda",
+  shipTo: "Destino Entrega",
+  endUser: "Cliente Final",
+  disti: "Distribuidor",
 };
+
 
 export type Filters = Record<FilterKey, string[]>;
 

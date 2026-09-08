@@ -34,6 +34,8 @@ import {
   filterRows,
   fmtUSD,
   parseWorkbook,
+  preloadWorkbookParser,
+
   sum,
   uniqueValues,
   type DimensionKey,
@@ -70,6 +72,19 @@ export function SalesDashboard() {
   useEffect(() => {
     setTargets(accounts.length ? loadTargets(accounts) : emptyTargets());
   }, [accounts]);
+
+  useEffect(() => {
+    const idle = (
+      window as Window & { requestIdleCallback?: (cb: () => void) => number }
+    ).requestIdleCallback;
+    if (idle) idle(() => void preloadWorkbookParser());
+    else {
+      const t = window.setTimeout(() => void preloadWorkbookParser(), 300);
+      return () => window.clearTimeout(t);
+    }
+    return undefined;
+  }, []);
+
 
   const accountOptions = useMemo(() => (rows.length ? uniqueValues(rows, "account") : []), [rows]);
 
@@ -117,8 +132,10 @@ export function SalesDashboard() {
     if (!file) return;
     setLoading(true);
     setError("");
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
     try {
       const parsed = await parseWorkbook(file);
+
       if (!parsed.length) throw new Error("Nenhuma linha válida encontrada na planilha.");
       setRows(parsed);
       setAccounts([]);
@@ -152,14 +169,19 @@ export function SalesDashboard() {
             compare o atingimento contra suas metas anual e trimestral.
           </p>
         </div>
-        <label className="relative cursor-pointer">
+        <label
+          className="relative cursor-pointer"
+          onPointerEnter={() => void preloadWorkbookParser()}
+        >
           <input
             type="file"
             accept=".xlsx,.xls,.csv"
             aria-label="Importar planilha"
             className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+            onFocus={() => void preloadWorkbookParser()}
             onChange={(e) => handleFile(e.target.files?.[0])}
           />
+
           <span className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">
             <Upload className="size-4" />
             {rows.length ? "Trocar planilha" : "Importar planilha"}
@@ -186,14 +208,19 @@ export function SalesDashboard() {
                 enviado para servidores.
               </p>
             </div>
-            <label className="relative cursor-pointer">
+            <label
+              className="relative cursor-pointer"
+              onPointerEnter={() => void preloadWorkbookParser()}
+            >
               <input
                 type="file"
                 accept=".xlsx,.xls,.csv"
                 aria-label="Selecionar arquivo da planilha"
                 className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                onFocus={() => void preloadWorkbookParser()}
                 onChange={(e) => handleFile(e.target.files?.[0])}
               />
+
               <span className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary px-4 py-2 text-sm font-medium hover:bg-muted">
                 <Upload className="size-4" /> Selecionar arquivo
               </span>
