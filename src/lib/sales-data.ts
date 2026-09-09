@@ -120,27 +120,26 @@ export function normalizeRows(rawRows: RawRow[]): SalesRow[] {
     .filter((r) => r.fiscalMonth > 0);
 }
 
-type XlsxModule = typeof import("xlsx");
-let xlsxPromise: Promise<XlsxModule> | null = null;
+let fastPromise: Promise<typeof import("./xlsx-fast")> | null = null;
+let xlsxPromise: Promise<typeof import("xlsx")> | null = null;
 
-export function preloadWorkbookParser(): Promise<XlsxModule> {
-  xlsxPromise ??= import("xlsx");
-  return xlsxPromise;
+/** Carrega antecipadamente o leitor rápido, para a importação começar na hora. */
+export function preloadWorkbookParser(): Promise<unknown> {
+  fastPromise ??= import("./xlsx-fast");
+  return fastPromise;
 }
 
-export async function parseWorkbook(file: File): Promise<SalesRow[]> {
-  const XLSX = await preloadWorkbookParser();
-  const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { dense: true });
-  const sheetName = wb.SheetNames[0]!;
-  const sheet = wb.Sheets[sheetName]!;
-  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null });
+const loadXlsx = () => (xlsxPromise ??= import("xlsx"));
+
+export function matrixToRows(matrix: unknown[][]): SalesRow[] {
   if (!matrix.length) return [];
 
-  const header = (matrix[0] ?? []).map((h) => String(h ?? "").trim().toLowerCase());
   const idx = new Map<string, number>();
-  header.forEach((h, i) => {
-    if (h && !idx.has(h)) idx.set(h, i);
+  (matrix[0] ?? []).forEach((h, i) => {
+    const key = String(h ?? "")
+      .trim()
+      .toLowerCase();
+    if (key && !idx.has(key)) idx.set(key, i);
   });
   const col = (...names: string[]): number => {
     for (const n of names) {
@@ -202,6 +201,31 @@ export async function parseWorkbook(file: File): Promise<SalesRow[]> {
   }
   return out;
 }
+
+async function parseWithXlsx(buf: ArrayBuffer): Promise<SalesRow[]> {
+  const XLSX = await loadXlsx();
+  const wb = XLSX.read(buf, { dense: true });
+  const sheet = wb.Sheets[wb.SheetNames[0]!]!;
+  return matrixToRows(XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null }));
+}
+
+export async function parseWorkbook(file: File): Promise<SalesRow[]> {
+  const buf = await file.arrayBuffer();
+  const isXlsx = /\.xlsx$/i.test(file.name);
+
+  if (isXlsx) {
+    try {
+      const { readSheetMatrix } = await (fastPromise ??= import("./xlsx-fast"));
+      const rows = matrixToRows(readSheetMatrix(new Uint8Array(buf)));
+      if (rows.length) return rows;
+    } catch {
+      // cai para o leitor completo abaixo
+    }
+  }
+
+  return parseWithXlsx(buf);
+}
+
 
 
 export const uniqueValues = (rows: SalesRow[], key: DimensionKey): string[] =>
