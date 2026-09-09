@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, Filter, Target, Upload, X } from "lucide-react";
+import { useRouter } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { BarChart3, Filter, LogOut, Target, Upload, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,8 +52,11 @@ import {
   saveTargets,
   type Targets,
 } from "@/lib/targets";
+import { logout } from "@/lib/gate.functions";
 
 export function SalesDashboard() {
+  const router = useRouter();
+  const doLogout = useServerFn(logout);
   const [rows, setRows] = useState<SalesRow[]>([]);
   const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -187,6 +192,15 @@ export function SalesDashboard() {
             {rows.length ? "Trocar planilha" : "Importar planilha"}
           </span>
         </label>
+        <Button
+          variant="outline"
+          onClick={async () => {
+            await doLogout();
+            await router.navigate({ to: "/unlock" });
+          }}
+        >
+          <LogOut className="size-4" /> Sair
+        </Button>
       </header>
 
       {error ? (

@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SalesDashboard } from "@/components/SalesDashboard";
+import { requireAccess } from "@/lib/gate.functions";
 
 export const Route = createFileRoute("/")({
+  loader: () => requireAccess(),
   head: () => ({
     meta: [
       { title: "Painel de Sell-Out e Metas | Sales Out Analytics" },
