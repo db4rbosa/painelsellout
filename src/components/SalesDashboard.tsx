@@ -192,6 +192,15 @@ export function SalesDashboard() {
             {rows.length ? "Trocar planilha" : "Importar planilha"}
           </span>
         </label>
+        <Button
+          variant="outline"
+          onClick={async () => {
+            await doLogout();
+            await router.navigate({ to: "/unlock" });
+          }}
+        >
+          <LogOut className="size-4" /> Sair
+        </Button>
       </header>
 
       {error ? (
