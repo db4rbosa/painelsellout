@@ -90,8 +90,8 @@ function UnlockPage() {
               />
             </div>
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            <Button type="submit" className="w-full" disabled={busy}>
-              {busy ? "Verificando..." : "Entrar"}
+            <Button type="submit" className="w-full" disabled={busy || !ready}>
+              {busy ? "Verificando..." : ready ? "Entrar" : "Carregando..."}
             </Button>
           </form>
         </CardContent>
