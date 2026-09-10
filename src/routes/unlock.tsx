@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +34,9 @@ function UnlockPage() {
   const doLogin = useServerFn(login);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => setReady(true), []);
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -47,7 +50,10 @@ function UnlockPage() {
           password: String(form.get("password") ?? ""),
         },
       });
-      if (ok) await router.navigate({ to: "/" });
+      if (ok) {
+        await router.invalidate();
+        await router.navigate({ to: "/", replace: true });
+      }
       else setError("Usuário ou senha incorretos");
     } catch {
       setError("Não foi possível validar o acesso. Tente novamente.");
@@ -84,8 +90,8 @@ function UnlockPage() {
               />
             </div>
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            <Button type="submit" className="w-full" disabled={busy}>
-              {busy ? "Verificando..." : "Entrar"}
+            <Button type="submit" className="w-full" disabled={busy || !ready}>
+              {busy ? "Verificando..." : ready ? "Entrar" : "Carregando..."}
             </Button>
           </form>
         </CardContent>
