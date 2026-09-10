@@ -47,7 +47,10 @@ function UnlockPage() {
           password: String(form.get("password") ?? ""),
         },
       });
-      if (ok) await router.navigate({ to: "/" });
+      if (ok) {
+        await router.invalidate();
+        await router.navigate({ to: "/", replace: true });
+      }
       else setError("Usuário ou senha incorretos");
     } catch {
       setError("Não foi possível validar o acesso. Tente novamente.");
