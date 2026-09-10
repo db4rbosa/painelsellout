@@ -1,20 +1,27 @@
 import { createServerFn } from "@tanstack/react-start";
-import { useSession } from "@tanstack/react-start/server";
+import { getRequestUrl, useSession } from "@tanstack/react-start/server";
 
 import { createHash, timingSafeEqual } from "node:crypto";
 
 type GateSession = { unlocked?: boolean };
 
 function sessionConfig() {
+  let https = false;
+  try {
+    https = getRequestUrl().protocol === "https:";
+  } catch {
+    https = false;
+  }
   return {
     password: process.env["SESSION_SECRET"]!,
     name: "site-gate",
     maxAge: 60 * 60 * 24 * 7,
     cookie: {
       httpOnly: true,
-      // Cookies marcados como secure são descartados em http://localhost (dev).
-      secure: process.env["NODE_ENV"] === "production",
-      sameSite: "lax" as const,
+      // O preview roda dentro de um iframe (contexto cross-site): o cookie
+      // só é aceito com SameSite=None + Secure, e isso exige https.
+      secure: https,
+      sameSite: https ? ("none" as const) : ("lax" as const),
       path: "/",
     },
   };
