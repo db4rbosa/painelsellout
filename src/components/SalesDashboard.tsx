@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { BarChart3, Filter, LogOut, Target, Upload, X } from "lucide-react";
+import { BarChart3, Filter, KeyRound, LogOut, Target, Upload, Users, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +26,7 @@ import {
 import { EvolutionChart } from "@/components/EvolutionChart";
 import { TargetPanel } from "@/components/TargetPanel";
 import { MultiSelectFilter } from "@/components/MultiSelectFilter";
+import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import {
   DIMENSIONS,
   FILTER_DIMS,
@@ -37,7 +38,6 @@ import {
   fmtUSD,
   parseWorkbook,
   preloadWorkbookParser,
-
   sum,
   uniqueValues,
   type DimensionKey,
@@ -45,22 +45,38 @@ import {
   type Granularity,
   type SalesRow,
 } from "@/lib/sales-data";
-import {
-  buildAttainment,
-  emptyTargets,
-  loadTargets,
-  saveTargets,
-  type Targets,
-} from "@/lib/targets";
+import { buildAttainment, emptyTargets, groupKey, type Targets } from "@/lib/targets";
+import { defaultPrefs, normalizePrefs, type DashboardPrefs } from "@/lib/prefs";
 import { logout } from "@/lib/gate.functions";
+import {
+  createWorkbookUpload,
+  getDashboardState,
+  registerWorkbook,
+  saveDashboardPrefs,
+} from "@/lib/dashboard-state.functions";
+import { supabase } from "@/integrations/supabase/client";
 
-export function SalesDashboard() {
+export type AccessInfo = {
+  kind: "master" | "user";
+  name: string;
+  email: string;
+  isAdmin: boolean;
+};
+
+export function SalesDashboard({ access }: { access: AccessInfo }) {
   const router = useRouter();
   const doLogout = useServerFn(logout);
+  const loadState = useServerFn(getDashboardState);
+  const savePrefs = useServerFn(saveDashboardPrefs);
+  const prepareUpload = useServerFn(createWorkbookUpload);
+  const saveWorkbook = useServerFn(registerWorkbook);
+
   const [rows, setRows] = useState<SalesRow[]>([]);
   const [fileName, setFileName] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [ready, setReady] = useState(false);
+  const [savingState, setSavingState] = useState(false);
 
   const [accounts, setAccounts] = useState<string[]>([]);
   const [filters, setFilters] = useState<Filters>(emptyFilters());
@@ -71,12 +87,10 @@ export function SalesDashboard() {
   const [chartType, setChartType] = useState<"area" | "line" | "bar">("area");
   const [stacked, setStacked] = useState(true);
   const [topN, setTopN] = useState(8);
+  const [targetsByGroup, setTargetsByGroup] = useState<Record<string, Targets>>({});
 
-  const [targets, setTargets] = useState<Targets>(emptyTargets());
-
-  useEffect(() => {
-    setTargets(accounts.length ? loadTargets(accounts) : emptyTargets());
-  }, [accounts]);
+  const currentGroupKey = groupKey(accounts);
+  const targets = targetsByGroup[currentGroupKey] ?? emptyTargets();
 
   useEffect(() => {
     const idle = (
@@ -90,10 +104,100 @@ export function SalesDashboard() {
     return undefined;
   }, []);
 
+  const applyPrefs = useCallback((prefs: DashboardPrefs) => {
+    setAccounts(prefs.accounts);
+    setFilters(prefs.filters);
+    setGroupBy(prefs.groupBy);
+    setGranularity(prefs.granularity);
+    setMetric(prefs.metric);
+    setChartType(prefs.chartType);
+    setStacked(prefs.stacked);
+    setTopN(prefs.topN);
+    setTargetsByGroup(prefs.targetsByGroup);
+  }, []);
 
-  const accountOptions = useMemo(() => (rows.length ? uniqueValues(rows, "account") : []), [rows]);
+  // Restaura a última configuração do usuário e a última planilha importada.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const state = await loadState();
+        if (cancelled) return;
+        applyPrefs(normalizePrefs(state.prefs));
 
-  const scopedRows = useMemo(() => filterRows(rows, accounts, filters), [rows, accounts, filters]);
+        if (state.workbook) {
+          setFileName(state.workbook.fileName);
+          const res = await fetch(state.workbook.url);
+          if (!res.ok) throw new Error("Não foi possível baixar a última planilha.");
+          const blob = await res.blob();
+          const parsed = await parseWorkbook(
+            new File([blob], state.workbook.fileName, { type: blob.type }),
+          );
+          if (!cancelled && parsed.length) setRows(parsed);
+        }
+      } catch {
+        if (!cancelled) setError("Não foi possível carregar a última planilha salva.");
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+          setReady(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [applyPrefs, loadState]);
+
+  // Salva a configuração atual (com atraso, para não gravar a cada clique).
+  const saveTimer = useRef<number | null>(null);
+  useEffect(() => {
+    if (!ready) return undefined;
+    const prefs: DashboardPrefs = {
+      ...defaultPrefs(),
+      accounts,
+      filters,
+      groupBy,
+      granularity,
+      metric,
+      chartType,
+      stacked,
+      topN,
+      targetsByGroup,
+    };
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      setSavingState(true);
+      void savePrefs({ data: { prefs } })
+        .catch(() => undefined)
+        .finally(() => setSavingState(false));
+    }, 700);
+    return () => {
+      if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    };
+  }, [
+    ready,
+    accounts,
+    filters,
+    groupBy,
+    granularity,
+    metric,
+    chartType,
+    stacked,
+    topN,
+    targetsByGroup,
+    savePrefs,
+  ]);
+
+  const accountOptions = useMemo(
+    () => (rows.length ? uniqueValues(rows, "account") : []),
+    [rows],
+  );
+
+  const scopedRows = useMemo(
+    () => filterRows(rows, accounts, filters),
+    [rows, accounts, filters],
+  );
 
   const filterOptions = useMemo(() => {
     const base = filterRows(rows, accounts, emptyFilters());
@@ -140,12 +244,19 @@ export function SalesDashboard() {
     await new Promise<void>((r) => requestAnimationFrame(() => r()));
     try {
       const parsed = await parseWorkbook(file);
-
       if (!parsed.length) throw new Error("Nenhuma linha válida encontrada na planilha.");
+      // Mantém a configuração atual: tudo é recalculado com os filtros e metas já salvos.
       setRows(parsed);
-      setAccounts([]);
-      setFilters(emptyFilters());
       setFileName(file.name);
+
+      const upload = await prepareUpload({ data: { fileName: file.name } });
+      const { error: uploadError } = await supabase.storage
+        .from(upload.bucket)
+        .uploadToSignedUrl(upload.path, upload.token, file);
+      if (uploadError) throw new Error("A planilha foi lida, mas não pôde ser salva na nuvem.");
+      await saveWorkbook({
+        data: { path: upload.path, fileName: file.name, fileSize: file.size },
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível ler o arquivo.");
     } finally {
@@ -154,8 +265,14 @@ export function SalesDashboard() {
   };
 
   const updateTargets = (t: Targets) => {
-    setTargets(t);
-    if (accounts.length) saveTargets(accounts, t);
+    setTargetsByGroup((prev) => ({ ...prev, [currentGroupKey]: t }));
+  };
+
+  const handleLogout = async () => {
+    if (access.kind === "master") await doLogout();
+    else await supabase.auth.signOut();
+    await router.invalidate();
+    await router.navigate({ to: "/unlock", replace: true });
   };
 
   const valueFormatter = (v: number) =>
@@ -170,37 +287,50 @@ export function SalesDashboard() {
           </p>
           <h1 className="mt-2 text-3xl font-bold md:text-4xl">Painel de Sell-Out e Metas</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Importe sua planilha de sales out, agrupe por qualquer dimensão, acompanhe a evolução e
-            compare o atingimento contra suas metas anual e trimestral.
+            Olá, {access.name}. Sua última configuração e a última planilha importada são
+            restauradas automaticamente.{" "}
+            {savingState ? <span className="text-primary">Salvando…</span> : null}
           </p>
         </div>
-        <label
-          className="relative cursor-pointer"
-          onPointerEnter={() => void preloadWorkbookParser()}
-        >
-          <input
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            aria-label="Importar planilha"
-            className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-            onFocus={() => void preloadWorkbookParser()}
-            onChange={(e) => handleFile(e.target.files?.[0])}
-          />
-
-          <span className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">
-            <Upload className="size-4" />
-            {rows.length ? "Trocar planilha" : "Importar planilha"}
-          </span>
-        </label>
-        <Button
-          variant="outline"
-          onClick={async () => {
-            await doLogout();
-            await router.navigate({ to: "/unlock" });
-          }}
-        >
-          <LogOut className="size-4" /> Sair
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <label
+            className="relative cursor-pointer"
+            onPointerEnter={() => void preloadWorkbookParser()}
+          >
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              aria-label="Importar planilha"
+              className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+              onFocus={() => void preloadWorkbookParser()}
+              onChange={(e) => handleFile(e.target.files?.[0])}
+            />
+            <span className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">
+              <Upload className="size-4" />
+              {rows.length ? "Trocar planilha" : "Importar planilha"}
+            </span>
+          </label>
+          {access.isAdmin ? (
+            <Button variant="outline" asChild>
+              <Link to="/usuarios">
+                <Users className="size-4" /> Usuários
+              </Link>
+            </Button>
+          ) : null}
+          {access.kind === "user" ? (
+            <ChangePasswordDialog
+              email={access.email}
+              trigger={
+                <Button variant="outline">
+                  <KeyRound className="size-4" /> Alterar senha
+                </Button>
+              }
+            />
+          ) : null}
+          <Button variant="outline" onClick={handleLogout}>
+            <LogOut className="size-4" /> Sair
+          </Button>
+        </div>
       </header>
 
       {error ? (
@@ -218,8 +348,8 @@ export function SalesDashboard() {
                 {loading ? "Lendo planilha..." : "Comece importando o arquivo de Sales Out"}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Formatos .xlsx, .xls ou .csv. O processamento acontece no seu navegador — nada é
-                enviado para servidores.
+                Formatos .xlsx, .xls ou .csv. A planilha fica salva e volta a carregar sozinha no
+                próximo acesso.
               </p>
             </div>
             <label
@@ -234,7 +364,6 @@ export function SalesDashboard() {
                 onFocus={() => void preloadWorkbookParser()}
                 onChange={(e) => handleFile(e.target.files?.[0])}
               />
-
               <span className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary px-4 py-2 text-sm font-medium hover:bg-muted">
                 <Upload className="size-4" /> Selecionar arquivo
               </span>
