@@ -1,12 +1,14 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { Lock } from "lucide-react";
+import { Lock, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { login } from "@/lib/gate.functions";
+import { getAccessInfo } from "@/lib/account.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/unlock")({
   head: () => ({
@@ -32,6 +34,7 @@ export const Route = createFileRoute("/unlock")({
 function UnlockPage() {
   const router = useRouter();
   const doLogin = useServerFn(login);
+  const readAccess = useServerFn(getAccessInfo);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
@@ -44,17 +47,38 @@ function UnlockPage() {
     setBusy(true);
     setError("");
     try {
-      const { ok } = await doLogin({
-        data: {
-          username: String(form.get("username") ?? ""),
-          password: String(form.get("password") ?? ""),
-        },
-      });
-      if (ok) {
-        await router.invalidate();
-        await router.navigate({ to: "/", replace: true });
+      const username = String(form.get("username") ?? "").trim();
+      const password = String(form.get("password") ?? "");
+      if (username.includes("@")) {
+        const { error: authError } = await supabase.auth.signInWithPassword({
+          email: username.toLowerCase(),
+          password,
+        });
+        if (authError) {
+          setError("E-mail ou senha incorretos");
+          return;
+        }
+        const identity = await readAccess();
+        if (identity.kind === "none") {
+          await supabase.auth.signOut();
+          setError(
+            identity.reason === "pending"
+              ? "Seu cadastro ainda aguarda aprovação do administrador."
+              : identity.reason === "blocked"
+                ? "Seu acesso está bloqueado. Fale com o administrador."
+                : "Sua conta ainda não está liberada para acesso.",
+          );
+          return;
+        }
+      } else {
+        const { ok } = await doLogin({ data: { username, password } });
+        if (!ok) {
+          setError("Usuário ou senha incorretos");
+          return;
+        }
       }
-      else setError("Usuário ou senha incorretos");
+      await router.invalidate();
+      await router.navigate({ to: "/", replace: true });
     } catch {
       setError("Não foi possível validar o acesso. Tente novamente.");
     } finally {
@@ -76,8 +100,15 @@ function UnlockPage() {
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>
             <div className="space-y-2">
-              <Label htmlFor="username">Usuário</Label>
-              <Input id="username" name="username" autoComplete="username" autoFocus required />
+              <Label htmlFor="username">Usuário master ou e-mail</Label>
+              <Input
+                id="username"
+                name="username"
+                autoComplete="username"
+                placeholder="seu@email.com"
+                autoFocus
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
@@ -93,6 +124,16 @@ function UnlockPage() {
             <Button type="submit" className="w-full" disabled={busy || !ready}>
               {busy ? "Verificando..." : ready ? "Entrar" : "Carregando..."}
             </Button>
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <Button variant="link" className="h-auto px-0" asChild>
+                <Link to="/nova-senha">Esqueci minha senha</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to="/cadastro">
+                  <UserPlus className="size-4" /> Criar conta
+                </Link>
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
