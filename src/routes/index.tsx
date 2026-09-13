@@ -1,12 +1,20 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { SalesDashboard } from "@/components/SalesDashboard";
+import { SalesDashboard, type AccessInfo } from "@/components/SalesDashboard";
 import { requireAccess } from "@/lib/gate.functions";
 
 export const Route = createFileRoute("/")({
+  ssr: false,
   loader: async () => {
-    const { unlocked } = await requireAccess();
-    if (!unlocked) throw redirect({ to: "/unlock" });
-    return { unlocked };
+    const identity = await requireAccess();
+    if (identity.kind === "none") throw redirect({ to: "/unlock" });
+    return {
+      access: {
+        kind: identity.kind,
+        name: identity.name,
+        email: identity.email,
+        isAdmin: identity.isAdmin,
+      } satisfies AccessInfo,
+    };
   },
   head: () => ({
     meta: [
@@ -26,5 +34,10 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: SalesDashboard,
+  component: DashboardRoute,
 });
+
+function DashboardRoute() {
+  const { access } = Route.useLoaderData();
+  return <SalesDashboard access={access} />;
+}
