@@ -1,4 +1,4 @@
-import { Link, createFileRoute, redirect, useRouter } from "@tanstack/react-router";
+import { Link, createFileRoute, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Check, ShieldBan, Trash2, Users } from "lucide-react";
@@ -31,7 +31,6 @@ export const Route = createFileRoute("/usuarios")({
 });
 
 function UsuariosPage() {
-  const router = useRouter();
   const fetchAccounts = useServerFn(listAccounts);
   const changeStatus = useServerFn(setAccountStatus);
   const removeAccount = useServerFn(deleteAccount);

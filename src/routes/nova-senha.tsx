@@ -31,7 +31,9 @@ function NovaSenhaPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    void supabase.auth.getSession().then(({ data }) => setRecovery(Boolean(data.session) && window.location.hash.includes("type=recovery")));
+    void supabase.auth.getSession().then(({ data }) =>
+      setRecovery(Boolean(data.session) && window.location.hash.includes("type=recovery")),
+    );
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") setRecovery(true);
     });
