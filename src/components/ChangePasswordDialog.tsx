@@ -33,18 +33,12 @@ export function ChangePasswordDialog({ email, trigger }: { email: string; trigge
     setBusy(true);
     setError("");
     setMessage("");
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password: current,
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: next,
+      current_password: current,
     });
-    if (signInError) {
-      setError("A senha atual está incorreta.");
-      setBusy(false);
-      return;
-    }
-    const { error: updateError } = await supabase.auth.updateUser({ password: next });
     setBusy(false);
-    if (updateError) setError("Não foi possível alterar a senha.");
+    if (updateError) setError("A senha atual está incorreta ou a nova senha não pôde ser salva.");
     else setMessage("Senha alterada com sucesso.");
   };
 
