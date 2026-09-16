@@ -17,6 +17,8 @@ export type DashboardPrefs = {
   stacked: boolean;
   topN: number;
   targetsByGroup: Record<string, Targets>;
+  selectedQuarters: number[];
+  accountsByQuarter: Record<number, string[]>;
 };
 
 export const defaultPrefs = (): DashboardPrefs => ({
@@ -29,6 +31,8 @@ export const defaultPrefs = (): DashboardPrefs => ({
   stacked: true,
   topN: 8,
   targetsByGroup: {},
+  selectedQuarters: [1, 2, 3, 4],
+  accountsByQuarter: {},
 });
 
 const strArray = (v: unknown): string[] =>
@@ -53,10 +57,32 @@ export function normalizePrefs(raw: unknown): DashboardPrefs {
   for (const [key, value] of Object.entries(rawTargets)) {
     const t = (value ?? {}) as Record<string, unknown>;
     const quarters = Array.isArray(t["quarters"]) ? (t["quarters"] as unknown[]) : [];
+    const servicesQuarters = Array.isArray(t["servicesQuarters"])
+      ? (t["servicesQuarters"] as unknown[])
+      : [];
     targetsByGroup[key] = {
       annual: numOr(t["annual"], 0),
       quarters: [0, 1, 2, 3].map((i) => numOr(quarters[i], 0)) as Targets["quarters"],
+      servicesQuarters: [0, 1, 2, 3].map((i) =>
+        numOr(servicesQuarters[i], 0),
+      ) as Targets["servicesQuarters"],
     };
+  }
+
+  const rawSelectedQuarters = Array.isArray(r["selectedQuarters"])
+    ? (r["selectedQuarters"] as unknown[])
+    : base.selectedQuarters;
+  const selectedQuarters = rawSelectedQuarters.filter(
+    (quarter): quarter is number =>
+      typeof quarter === "number" && Number.isInteger(quarter) && quarter >= 1 && quarter <= 4,
+  );
+  const rawAccountsByQuarter =
+    r["accountsByQuarter"] && typeof r["accountsByQuarter"] === "object"
+      ? (r["accountsByQuarter"] as Record<string, unknown>)
+      : {};
+  const accountsByQuarter: Record<number, string[]> = {};
+  for (const quarter of [1, 2, 3, 4]) {
+    accountsByQuarter[quarter] = strArray(rawAccountsByQuarter[String(quarter)]);
   }
 
   return {
@@ -71,6 +97,8 @@ export function normalizePrefs(raw: unknown): DashboardPrefs {
     stacked: typeof r["stacked"] === "boolean" ? r["stacked"] : true,
     topN: numOr(r["topN"], 8),
     targetsByGroup,
+    selectedQuarters: selectedQuarters.length ? selectedQuarters : base.selectedQuarters,
+    accountsByQuarter,
   };
 }
 

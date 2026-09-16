@@ -1,10 +1,20 @@
 import type { SalesRow } from "./sales-data";
 
-export type Targets = { annual: number; quarters: [number, number, number, number] };
+export type QuarterValues = [number, number, number, number];
+
+export type Targets = {
+  annual: number;
+  quarters: QuarterValues;
+  servicesQuarters: QuarterValues;
+};
 
 const STORAGE_KEY = "sales-out-targets-v1";
 
-export const emptyTargets = (): Targets => ({ annual: 0, quarters: [0, 0, 0, 0] });
+export const emptyTargets = (): Targets => ({
+  annual: 0,
+  quarters: [0, 0, 0, 0],
+  servicesQuarters: [0, 0, 0, 0],
+});
 
 export const groupKey = (accounts: string[]): string =>
   [...accounts].sort((a, b) => a.localeCompare(b)).join(" | ");
@@ -47,11 +57,53 @@ export type AttainmentRow = {
 
 const quarterOf = (month: number) => Math.min(4, Math.max(1, Math.ceil(month / 3)));
 
-export function buildAttainment(rows: SalesRow[], targets: Targets) {
+export type QuarterAccounts = Record<number, string[]>;
+
+export type AttainmentTotal = {
+  actual: number;
+  target: number;
+  attainment: number | null;
+};
+
+export type AttainmentResult = {
+  months: AttainmentRow[];
+  quarters: AttainmentRow[];
+  servicesQuarters: AttainmentRow[];
+  total: AttainmentTotal;
+  servicesTotal: AttainmentTotal;
+};
+
+const totalOf = (actual: number, target: number): AttainmentTotal => ({
+  actual,
+  target,
+  attainment: target > 0 ? actual / target : null,
+});
+
+export function buildAttainment(
+  rows: SalesRow[],
+  targets: Targets,
+  selectedQuarters: number[],
+  accountsByQuarter: QuarterAccounts,
+): AttainmentResult {
   const actualByMonth = new Array(12).fill(0) as number[];
+  const servicesByQuarter = [0, 0, 0, 0];
+  const selected = new Set(selectedQuarters);
+  const accountSets = new Map<number, Set<string>>(
+    selectedQuarters.map((quarter) => [quarter, new Set(accountsByQuarter[quarter] ?? [])]),
+  );
+
   for (const r of rows) {
+    if (!selected.has(r.fiscalQuarter)) continue;
+    const quarterAccounts = accountSets.get(r.fiscalQuarter);
+    if (!quarterAccounts?.size || !quarterAccounts.has(r.account)) continue;
     const idx = r.fiscalMonth - 1;
     if (idx >= 0 && idx < 12) actualByMonth[idx] = (actualByMonth[idx] ?? 0) + r.revenue;
+    if (r.lob.trim().toLowerCase() === "services") {
+      const quarterIndex = r.fiscalQuarter - 1;
+      if (quarterIndex >= 0 && quarterIndex < 4) {
+        servicesByQuarter[quarterIndex] = (servicesByQuarter[quarterIndex] ?? 0) + r.revenue;
+      }
+    }
   }
   const quarterTarget = (q: number) => targets.quarters[q - 1] ?? 0;
   const actualByQuarter = [0, 0, 0, 0];
@@ -95,24 +147,32 @@ export function buildAttainment(rows: SalesRow[], targets: Targets) {
       attainment: target > 0 ? actual / target : null,
     };
   });
+  const servicesQuarters: AttainmentRow[] = servicesByQuarter.map((actual, i) => {
+    const target = targets.servicesQuarters[i] ?? 0;
+    return {
+      label: `Q${i + 1}`,
+      actual,
+      target,
+      attainment: target > 0 ? actual / target : null,
+    };
+  });
+  const includedIndexes = selectedQuarters.map((quarter) => quarter - 1);
+  const totalActual = includedIndexes.reduce((sum, index) => sum + (actualByQuarter[index] ?? 0), 0);
+  const totalTarget = includedIndexes.reduce((sum, index) => sum + (targets.quarters[index] ?? 0), 0);
+  const servicesActual = includedIndexes.reduce(
+    (sum, index) => sum + (servicesByQuarter[index] ?? 0),
+    0,
+  );
+  const servicesTarget = includedIndexes.reduce(
+    (sum, index) => sum + (targets.servicesQuarters[index] ?? 0),
+    0,
+  );
 
-  const half = (from: number, to: number, label: string): AttainmentRow => {
-    const actual = actualByQuarter.slice(from, to).reduce((a, b) => a + b, 0);
-    const target = targets.quarters.slice(from, to).reduce((a, b) => a + b, 0);
-    return { label, actual, target, attainment: target > 0 ? actual / target : null };
+  return {
+    months,
+    quarters,
+    servicesQuarters,
+    total: totalOf(totalActual, totalTarget),
+    servicesTotal: totalOf(servicesActual, servicesTarget),
   };
-
-  const h1 = half(0, 2, "1º Semestre (H1)");
-  const h2 = half(2, 4, "2º Semestre (H2)");
-  const totalActual = actualByQuarter.reduce((a, b) => a + b, 0);
-  const fyTarget =
-    targets.annual > 0 ? targets.annual : targets.quarters.reduce((a, b) => a + b, 0);
-  const fullYear: AttainmentRow = {
-    label: "Ano Fiscal (FY)",
-    actual: totalActual,
-    target: fyTarget,
-    attainment: fyTarget > 0 ? totalActual / fyTarget : null,
-  };
-
-  return { months, quarters, halves: [h1, h2], fullYear };
 }
