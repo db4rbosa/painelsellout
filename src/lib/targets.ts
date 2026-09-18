@@ -84,6 +84,11 @@ const totalOf = (actual: number, target: number): AttainmentTotal => ({
   attainment: target > 0 ? actual / target : null,
 });
 
+const isServiceLine = (lineOfBusiness: string) => {
+  const normalized = lineOfBusiness.trim().toLocaleLowerCase("en-US");
+  return normalized === "service" || normalized === "services";
+};
+
 export function buildAttainment(
   rows: SalesRow[],
   targets: Targets,
@@ -118,7 +123,7 @@ export function buildAttainment(
     if (!quarterAccounts?.size || !quarterAccounts.has(r.account)) continue;
     const idx = r.fiscalMonth - 1;
     if (idx >= 0 && idx < 12) actualByMonth[idx] = (actualByMonth[idx] ?? 0) + r.revenue;
-    if (r.lob.trim().toLowerCase() === "services") {
+    if (isServiceLine(r.lob)) {
       const quarterIndex = r.fiscalQuarter - 1;
       if (quarterIndex >= 0 && quarterIndex < 4) {
         servicesByQuarter[quarterIndex] = (servicesByQuarter[quarterIndex] ?? 0) + r.revenue;
