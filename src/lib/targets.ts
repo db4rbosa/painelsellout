@@ -90,6 +90,13 @@ const isServiceLine = (lineOfBusiness: string) => {
   return normalized === "service" || normalized === "services";
 };
 
+const isSalesLine = (lineOfBusiness: string) => {
+  const normalized = lineOfBusiness.trim().toLocaleLowerCase("en-US");
+  return ["mobility", "printer", "printers", "scanner", "scanners", "software"].includes(
+    normalized,
+  );
+};
+
 export function buildAttainment(
   rows: SalesRow[],
   targets: Targets,
@@ -132,7 +139,7 @@ export function buildAttainment(
       if (quarterIndex >= 0 && quarterIndex < 4) {
         servicesByQuarter[quarterIndex] = (servicesByQuarter[quarterIndex] ?? 0) + r.revenue;
       }
-    } else if (idx >= 0 && idx < 12) {
+    } else if (isSalesLine(r.lob) && idx >= 0 && idx < 12) {
       actualByMonth[idx] = (actualByMonth[idx] ?? 0) + r.revenue;
     }
   }
