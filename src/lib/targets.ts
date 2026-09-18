@@ -34,7 +34,12 @@ export function loadTargets(accounts: string[]): Targets {
   const first = accounts[0];
   const found =
     all[groupKey(accounts)] ?? (accounts.length === 1 && first ? all[first] : undefined);
-  return found ?? emptyTargets();
+  if (!found) return emptyTargets();
+  return {
+    annual: found.annual ?? 0,
+    quarters: found.quarters ?? [0, 0, 0, 0],
+    servicesQuarters: found.servicesQuarters ?? [0, 0, 0, 0],
+  };
 }
 
 export function saveTargets(accounts: string[], targets: Targets) {
@@ -126,7 +131,10 @@ export function buildAttainment(
     "Nov",
     "Dec",
   ];
-  const monthlyTargets = actualByMonth.map((_, i) => quarterTarget(quarterOf(i + 1)) / 3);
+  const monthlyTargets = actualByMonth.map((_, i) => {
+    const quarter = quarterOf(i + 1);
+    return selected.has(quarter) ? quarterTarget(quarter) / 3 : 0;
+  });
 
   const months: AttainmentRow[] = actualByMonth.map((actual, i) => {
     const target = monthlyTargets[i] ?? 0;
