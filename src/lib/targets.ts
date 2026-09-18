@@ -34,7 +34,12 @@ export function loadTargets(accounts: string[]): Targets {
   const first = accounts[0];
   const found =
     all[groupKey(accounts)] ?? (accounts.length === 1 && first ? all[first] : undefined);
-  return found ?? emptyTargets();
+  if (!found) return emptyTargets();
+  return {
+    annual: found.annual ?? 0,
+    quarters: found.quarters ?? [0, 0, 0, 0],
+    servicesQuarters: found.servicesQuarters ?? [0, 0, 0, 0],
+  };
 }
 
 export function saveTargets(accounts: string[], targets: Targets) {

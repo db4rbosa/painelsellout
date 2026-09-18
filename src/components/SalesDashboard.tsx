@@ -45,7 +45,13 @@ import {
   type Granularity,
   type SalesRow,
 } from "@/lib/sales-data";
-import { buildAttainment, emptyTargets, groupKey, type Targets } from "@/lib/targets";
+import {
+  buildAttainment,
+  emptyTargets,
+  groupKey,
+  type QuarterAccounts,
+  type Targets,
+} from "@/lib/targets";
 import { defaultPrefs, normalizePrefs, type DashboardPrefs } from "@/lib/prefs";
 import { logout } from "@/lib/gate.functions";
 import {
@@ -88,6 +94,8 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const [stacked, setStacked] = useState(true);
   const [topN, setTopN] = useState(8);
   const [targetsByGroup, setTargetsByGroup] = useState<Record<string, Targets>>({});
+  const [selectedQuarters, setSelectedQuarters] = useState<number[]>([1, 2, 3, 4]);
+  const [accountsByQuarter, setAccountsByQuarter] = useState<QuarterAccounts>({});
 
   const currentGroupKey = groupKey(accounts);
   const targets = targetsByGroup[currentGroupKey] ?? emptyTargets();
@@ -114,6 +122,8 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     setStacked(prefs.stacked);
     setTopN(prefs.topN);
     setTargetsByGroup(prefs.targetsByGroup);
+    setSelectedQuarters(prefs.selectedQuarters);
+    setAccountsByQuarter(prefs.accountsByQuarter);
   }, []);
 
   // Restaura a última configuração do usuário e a última planilha importada.
@@ -164,6 +174,8 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
       stacked,
       topN,
       targetsByGroup,
+      selectedQuarters,
+      accountsByQuarter,
     };
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
@@ -186,6 +198,8 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     stacked,
     topN,
     targetsByGroup,
+    selectedQuarters,
+    accountsByQuarter,
     savePrefs,
   ]);
 
@@ -193,6 +207,33 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     () => (rows.length ? uniqueValues(rows, "account") : []),
     [rows],
   );
+
+  const targetAccountOptions = useMemo(
+    () => (accounts.length ? accountOptions.filter((account) => accounts.includes(account)) : accountOptions),
+    [accountOptions, accounts],
+  );
+
+  useEffect(() => {
+    if (!ready || !targetAccountOptions.length) return;
+    const allowed = new Set(targetAccountOptions);
+    setAccountsByQuarter((previous) => {
+      let changed = false;
+      const next: QuarterAccounts = { ...previous };
+      for (const quarter of [1, 2, 3, 4]) {
+        const current = previous[quarter] ?? [];
+        const valid = current.filter((account) => allowed.has(account));
+        const resolved = valid.length ? valid : targetAccountOptions;
+        if (
+          resolved.length !== current.length ||
+          resolved.some((account, index) => account !== current[index])
+        ) {
+          next[quarter] = resolved;
+          changed = true;
+        }
+      }
+      return changed ? next : previous;
+    });
+  }, [ready, targetAccountOptions]);
 
   const scopedRows = useMemo(
     () => filterRows(rows, accounts, filters),
@@ -231,7 +272,10 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
       .slice(0, 25);
   }, [scopedRows, groupBy]);
 
-  const attainment = useMemo(() => buildAttainment(scopedRows, targets), [scopedRows, targets]);
+  const attainment = useMemo(
+    () => buildAttainment(scopedRows, targets, selectedQuarters, accountsByQuarter),
+    [scopedRows, targets, selectedQuarters, accountsByQuarter],
+  );
 
   const totalRevenue = useMemo(() => sum(scopedRows), [scopedRows]);
   const totalQty = useMemo(() => sum(scopedRows, "quantity"), [scopedRows]);
@@ -266,6 +310,10 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
 
   const updateTargets = (t: Targets) => {
     setTargetsByGroup((prev) => ({ ...prev, [currentGroupKey]: t }));
+  };
+
+  const updateQuarterAccounts = (quarter: number, quarterAccounts: string[]) => {
+    setAccountsByQuarter((previous) => ({ ...previous, [quarter]: quarterAccounts }));
   };
 
   const handleLogout = async () => {
@@ -597,7 +645,11 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
 
             <TabsContent value="metas" className="mt-6">
               <TargetPanel
-                accounts={accounts}
+                accountOptions={targetAccountOptions}
+                selectedQuarters={selectedQuarters}
+                onSelectedQuartersChange={setSelectedQuarters}
+                accountsByQuarter={accountsByQuarter}
+                onAccountsByQuarterChange={updateQuarterAccounts}
                 targets={targets}
                 onChange={updateTargets}
                 attainment={attainment}
