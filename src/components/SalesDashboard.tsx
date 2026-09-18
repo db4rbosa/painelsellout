@@ -277,6 +277,37 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     [scopedRows, targets, selectedQuarters, accountsByQuarter],
   );
 
+  const cumulativeAttainment = useMemo(() => {
+    let salesActual = 0;
+    let salesTarget = 0;
+    let servicesActual = 0;
+    let servicesTarget = 0;
+
+    return attainment.months.flatMap((month, index) => {
+      const servicesMonth = attainment.servicesMonths[index];
+      if (!servicesMonth) return [];
+      if (
+        month.actual <= 0 &&
+        month.target <= 0 &&
+        servicesMonth.actual <= 0 &&
+        servicesMonth.target <= 0
+      ) {
+        return [];
+      }
+      salesActual += month.actual;
+      salesTarget += month.target;
+      servicesActual += servicesMonth.actual;
+      servicesTarget += servicesMonth.target;
+      return [{
+        period: month.label,
+        "Vendas realizadas": Math.round(salesActual),
+        "Meta de vendas": Math.round(salesTarget),
+        "Serviços realizados": Math.round(servicesActual),
+        "Meta de Serviços": Math.round(servicesTarget),
+      }];
+    });
+  }, [attainment]);
+
   const totalRevenue = useMemo(() => sum(scopedRows), [scopedRows]);
   const totalQty = useMemo(() => sum(scopedRows, "quantity"), [scopedRows]);
   const activeFilters = countActiveFilters(filters);
@@ -660,15 +691,14 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
                 </CardHeader>
                 <CardContent>
                   <EvolutionChart
-                    data={attainment.months
-                      .filter((m) => m.actual > 0 || m.target > 0)
-                      .map((m) => ({
-                        period: m.label,
-                        Real: Math.round(m.actual),
-                        Meta: Math.round(m.target),
-                      }))}
-                    keys={["Real", "Meta"]}
-                    type="bar"
+                    data={cumulativeAttainment}
+                    keys={[
+                      "Vendas realizadas",
+                      "Meta de vendas",
+                      "Serviços realizados",
+                      "Meta de Serviços",
+                    ]}
+                    type="line"
                     stacked={false}
                     valueFormatter={fmtUSD}
                   />

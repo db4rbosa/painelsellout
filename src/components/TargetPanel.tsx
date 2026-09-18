@@ -151,7 +151,7 @@ export function TargetPanel({
                   </div>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <AttainmentBlock title="Atingimento geral" row={general} />
+                  <AttainmentBlock title="Atingimento de vendas" row={general} />
                   <AttainmentBlock title="Atingimento de Serviços" row={services} />
                 </div>
               </CardContent>
@@ -165,7 +165,7 @@ export function TargetPanel({
           <CardTitle className="text-base">Total dos quarters selecionados</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
-          <AttainmentBlock title="Total geral" row={{ label: "Total", ...attainment.total }} />
+          <AttainmentBlock title="Total de vendas" row={{ label: "Total", ...attainment.total }} />
           <AttainmentBlock
             title="Total de Serviços"
             row={{ label: "Services", ...attainment.servicesTotal }}
@@ -178,11 +178,25 @@ export function TargetPanel({
           <CardTitle className="text-base">Atingimento mês a mês</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {attainment.months
-            .filter((month) => month.actual > 0 || month.target > 0)
-            .map((month) => (
-              <AttainmentBlock key={month.label} title={month.label} row={month} />
-            ))}
+          {attainment.months.map((month, index) => {
+            const servicesMonth = attainment.servicesMonths[index];
+            if (
+              !servicesMonth ||
+              (month.actual <= 0 &&
+                month.target <= 0 &&
+                servicesMonth.actual <= 0 &&
+                servicesMonth.target <= 0)
+            ) {
+              return null;
+            }
+            return (
+              <div key={month.label} className="space-y-3">
+                <p className="text-sm font-semibold">{month.label}</p>
+                <AttainmentBlock title="Vendas" row={month} />
+                <AttainmentBlock title="Serviços" row={servicesMonth} />
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
     </div>
