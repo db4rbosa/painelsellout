@@ -72,6 +72,7 @@ export type AttainmentTotal = {
 
 export type AttainmentResult = {
   months: AttainmentRow[];
+  servicesMonths: AttainmentRow[];
   quarters: AttainmentRow[];
   servicesQuarters: AttainmentRow[];
   total: AttainmentTotal;
@@ -108,6 +109,7 @@ export function buildAttainment(
     ? targets.servicesQuarters
     : [0, 0, 0, 0];
   const actualByMonth = new Array(12).fill(0) as number[];
+  const servicesByMonth = new Array(12).fill(0) as number[];
   const servicesByQuarter = [0, 0, 0, 0];
   const selected = new Set(selectedQuarterList);
   const accountSets = new Map<number, Set<string>>(
@@ -122,12 +124,16 @@ export function buildAttainment(
     const quarterAccounts = accountSets.get(r.fiscalQuarter);
     if (!quarterAccounts?.size || !quarterAccounts.has(r.account)) continue;
     const idx = r.fiscalMonth - 1;
-    if (idx >= 0 && idx < 12) actualByMonth[idx] = (actualByMonth[idx] ?? 0) + r.revenue;
     if (isServiceLine(r.lob)) {
+      if (idx >= 0 && idx < 12) {
+        servicesByMonth[idx] = (servicesByMonth[idx] ?? 0) + r.revenue;
+      }
       const quarterIndex = r.fiscalQuarter - 1;
       if (quarterIndex >= 0 && quarterIndex < 4) {
         servicesByQuarter[quarterIndex] = (servicesByQuarter[quarterIndex] ?? 0) + r.revenue;
       }
+    } else if (idx >= 0 && idx < 12) {
+      actualByMonth[idx] = (actualByMonth[idx] ?? 0) + r.revenue;
     }
   }
   const quarterTarget = (q: number) => quarterTargets[q - 1] ?? 0;
@@ -155,9 +161,22 @@ export function buildAttainment(
     const quarter = quarterOf(i + 1);
     return selected.has(quarter) ? quarterTarget(quarter) / 3 : 0;
   });
+  const monthlyServicesTargets = servicesByMonth.map((_, i) => {
+    const quarter = quarterOf(i + 1);
+    return selected.has(quarter) ? (servicesTargets[quarter - 1] ?? 0) / 3 : 0;
+  });
 
   const months: AttainmentRow[] = actualByMonth.map((actual, i) => {
     const target = monthlyTargets[i] ?? 0;
+    return {
+      label: labels[i] ?? String(i + 1),
+      actual,
+      target,
+      attainment: target > 0 ? actual / target : null,
+    };
+  });
+  const servicesMonths: AttainmentRow[] = servicesByMonth.map((actual, i) => {
+    const target = monthlyServicesTargets[i] ?? 0;
     return {
       label: labels[i] ?? String(i + 1),
       actual,
@@ -198,6 +217,7 @@ export function buildAttainment(
 
   return {
     months,
+    servicesMonths,
     quarters,
     servicesQuarters,
     total: totalOf(totalActual, totalTarget),
