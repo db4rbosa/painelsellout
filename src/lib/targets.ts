@@ -131,7 +131,10 @@ export function buildAttainment(
     "Nov",
     "Dec",
   ];
-  const monthlyTargets = actualByMonth.map((_, i) => quarterTarget(quarterOf(i + 1)) / 3);
+  const monthlyTargets = actualByMonth.map((_, i) => {
+    const quarter = quarterOf(i + 1);
+    return selected.has(quarter) ? quarterTarget(quarter) / 3 : 0;
+  });
 
   const months: AttainmentRow[] = actualByMonth.map((actual, i) => {
     const target = monthlyTargets[i] ?? 0;
