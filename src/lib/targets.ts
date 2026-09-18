@@ -87,14 +87,29 @@ const totalOf = (actual: number, target: number): AttainmentTotal => ({
 export function buildAttainment(
   rows: SalesRow[],
   targets: Targets,
-  selectedQuarters: number[],
-  accountsByQuarter: QuarterAccounts,
+  selectedQuarters: number[] = [1, 2, 3, 4],
+  accountsByQuarter: QuarterAccounts = {},
 ): AttainmentResult {
+  const safeSelectedQuarters = Array.isArray(selectedQuarters)
+    ? selectedQuarters.filter(
+        (quarter) => Number.isInteger(quarter) && quarter >= 1 && quarter <= 4,
+      )
+    : [1, 2, 3, 4];
+  const selectedQuarterList = safeSelectedQuarters.length
+    ? safeSelectedQuarters
+    : [1, 2, 3, 4];
+  const quarterTargets = Array.isArray(targets?.quarters) ? targets.quarters : [0, 0, 0, 0];
+  const servicesTargets = Array.isArray(targets?.servicesQuarters)
+    ? targets.servicesQuarters
+    : [0, 0, 0, 0];
   const actualByMonth = new Array(12).fill(0) as number[];
   const servicesByQuarter = [0, 0, 0, 0];
-  const selected = new Set(selectedQuarters);
+  const selected = new Set(selectedQuarterList);
   const accountSets = new Map<number, Set<string>>(
-    selectedQuarters.map((quarter) => [quarter, new Set(accountsByQuarter[quarter] ?? [])]),
+    selectedQuarterList.map((quarter) => [
+      quarter,
+      new Set(accountsByQuarter?.[quarter] ?? []),
+    ]),
   );
 
   for (const r of rows) {
@@ -110,7 +125,7 @@ export function buildAttainment(
       }
     }
   }
-  const quarterTarget = (q: number) => targets.quarters[q - 1] ?? 0;
+  const quarterTarget = (q: number) => quarterTargets[q - 1] ?? 0;
   const actualByQuarter = [0, 0, 0, 0];
   actualByMonth.forEach((v, i) => {
     const qi = quarterOf(i + 1) - 1;
@@ -156,7 +171,7 @@ export function buildAttainment(
     };
   });
   const servicesQuarters: AttainmentRow[] = servicesByQuarter.map((actual, i) => {
-    const target = targets.servicesQuarters[i] ?? 0;
+    const target = servicesTargets[i] ?? 0;
     return {
       label: `Q${i + 1}`,
       actual,
@@ -164,15 +179,15 @@ export function buildAttainment(
       attainment: target > 0 ? actual / target : null,
     };
   });
-  const includedIndexes = selectedQuarters.map((quarter) => quarter - 1);
+  const includedIndexes = selectedQuarterList.map((quarter) => quarter - 1);
   const totalActual = includedIndexes.reduce((sum, index) => sum + (actualByQuarter[index] ?? 0), 0);
-  const totalTarget = includedIndexes.reduce((sum, index) => sum + (targets.quarters[index] ?? 0), 0);
+  const totalTarget = includedIndexes.reduce((sum, index) => sum + (quarterTargets[index] ?? 0), 0);
   const servicesActual = includedIndexes.reduce(
     (sum, index) => sum + (servicesByQuarter[index] ?? 0),
     0,
   );
   const servicesTarget = includedIndexes.reduce(
-    (sum, index) => sum + (targets.servicesQuarters[index] ?? 0),
+    (sum, index) => sum + (servicesTargets[index] ?? 0),
     0,
   );
 
