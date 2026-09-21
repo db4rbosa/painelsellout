@@ -1,7 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { BarChart3, Filter, KeyRound, LogOut, Target, Upload, Users, X } from "lucide-react";
+import {
+  BarChart3,
+  FileDown,
+  Filter,
+  KeyRound,
+  Loader2,
+  LogOut,
+  Sheet,
+  Target,
+  Upload,
+  Users,
+  X,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +65,11 @@ import {
   type Targets,
 } from "@/lib/targets";
 import { defaultPrefs, normalizePrefs, type DashboardPrefs } from "@/lib/prefs";
+import {
+  buildSalesReport,
+  downloadReportCsv,
+  downloadReportPdf,
+} from "@/lib/report-export";
 import { logout } from "@/lib/gate.functions";
 import {
   createWorkbookUpload,
@@ -83,6 +100,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
   const [savingState, setSavingState] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const [accounts, setAccounts] = useState<string[]>([]);
   const [filters, setFilters] = useState<Filters>(emptyFilters());
@@ -277,6 +295,28 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     [scopedRows, targets, selectedQuarters, accountsByQuarter],
   );
 
+  const report = useMemo(
+    () =>
+      buildSalesReport({
+        fileName,
+        accounts,
+        allAccountOptions: targetAccountOptions,
+        filters,
+        selectedQuarters,
+        accountsByQuarter,
+        attainment,
+      }),
+    [
+      fileName,
+      accounts,
+      targetAccountOptions,
+      filters,
+      selectedQuarters,
+      accountsByQuarter,
+      attainment,
+    ],
+  );
+
   const cumulativeAttainment = useMemo(() => {
     let salesActual = 0;
     let salesTarget = 0;
@@ -354,6 +394,18 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     await router.navigate({ to: "/unlock", replace: true });
   };
 
+  const handlePdfExport = async () => {
+    setExportingPdf(true);
+    setError("");
+    try {
+      await downloadReportPdf(report);
+    } catch {
+      setError("Não foi possível gerar o relatório em PDF.");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   const valueFormatter = (v: number) =>
     metric === "revenue" ? fmtUSD(v) : `${new Intl.NumberFormat("pt-BR").format(v)} un.`;
 
@@ -372,6 +424,21 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {rows.length ? (
+            <>
+              <Button variant="outline" onClick={() => downloadReportCsv(report)}>
+                <Sheet className="size-4" /> Exportar CSV
+              </Button>
+              <Button variant="outline" onClick={handlePdfExport} disabled={exportingPdf}>
+                {exportingPdf ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <FileDown className="size-4" />
+                )}
+                Exportar PDF
+              </Button>
+            </>
+          ) : null}
           <label
             className="relative cursor-pointer"
             onPointerEnter={() => void preloadWorkbookParser()}
