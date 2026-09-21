@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "sdk_version": "3.0.1",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://jscdtezfftzxcbvwnviq.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "painel-de-sell-out",
+      "version": "0.1.0",
+      "title": "Painel de Sell Out"
+    },
+    "tools": [
+      {
+        "name": "get_profile",
+        "title": "Consultar perfil",
+        "description": "Consulta o nome, e-mail e situação da conta aprovada conectada ao painel.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": null,
+        "outputSchema": null
+      },
+      {
+        "name": "get_dashboard_preferences",
+        "title": "Consultar configurações e metas",
+        "description": "Consulta os accounts, filtros, quarters, agrupamento, visualização e metas salvos pelo usuário conectado.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": null,
+        "outputSchema": null
+      },
+      {
+        "name": "get_latest_workbook",
+        "title": "Consultar última planilha",
+        "description": "Consulta o nome, tamanho, responsável e data da última planilha compartilhada, sem expor o arquivo privado.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": null,
+        "outputSchema": null
+      }
+    ]
+  }
+}
