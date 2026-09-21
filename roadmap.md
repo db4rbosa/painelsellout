@@ -7,6 +7,6 @@
 - [x] Separar vendas e Serviços no atingimento mensal e consolidado
 - [x] Adicionar Serviços ao gráfico de realizado e meta acumulados
 - [x] Validar os cálculos sem dupla contagem e a exibição
-- [ ] Ativar autorização OAuth para integrações de agentes
-- [ ] Adicionar ferramentas MCP somente leitura
-- [ ] Validar catálogo, acesso e tela de consentimento
+- [x] Ativar autorização OAuth para integrações de agentes
+- [x] Adicionar ferramentas MCP somente leitura
+- [x] Validar catálogo, acesso e tela de consentimento
