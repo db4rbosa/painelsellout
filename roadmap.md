@@ -11,6 +11,6 @@
 - [x] Adicionar ferramentas MCP somente leitura
 - [x] Validar catálogo, acesso e tela de consentimento
 
-- [ ] Criar base única do relatório com filtros, accounts e quarters
+- [x] Criar base única do relatório com filtros, accounts e quarters
 - [ ] Adicionar exportação em PDF e CSV
 - [ ] Validar downloads, cálculos e apresentação do PDF
