@@ -12,5 +12,5 @@
 - [x] Validar catálogo, acesso e tela de consentimento
 
 - [x] Criar base única do relatório com filtros, accounts e quarters
-- [ ] Adicionar exportação em PDF e CSV
-- [ ] Validar downloads, cálculos e apresentação do PDF
+- [x] Adicionar exportação em PDF e CSV
+- [x] Validar downloads, cálculos e apresentação do PDF

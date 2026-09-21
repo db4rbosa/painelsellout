@@ -295,7 +295,7 @@ export async function downloadReportPdf(report: SalesReport) {
   autoTable(doc, {
     startY: cursor + 3,
     margin: { left: margin, right: margin },
-    head: [["Categoria", "Realizado (USD)", "Meta (USD)", "Atingimento"]],
+    head: [["Totais · Categoria", "Realizado (USD)", "Meta (USD)", "Atingimento"]],
     body: report.totals.map((line) => [line.category, money(line.actual), money(line.target), percent(line.attainment)]),
     theme: "grid",
     headStyles: { fillColor: [19, 45, 49], textColor: 255 },
