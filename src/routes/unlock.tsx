@@ -11,6 +11,11 @@ import { getAccessInfo } from "@/lib/account.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/unlock")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    next: typeof search.next === "string" && search.next.startsWith("/") && !search.next.startsWith("//")
+      ? search.next
+      : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Acesso restrito | Sales Out Analytics" },
@@ -33,6 +38,7 @@ export const Route = createFileRoute("/unlock")({
 
 function UnlockPage() {
   const router = useRouter();
+  const { next } = Route.useSearch();
   const doLogin = useServerFn(login);
   const readAccess = useServerFn(getAccessInfo);
   const [error, setError] = useState("");
@@ -78,7 +84,11 @@ function UnlockPage() {
         }
       }
       await router.invalidate();
-      await router.navigate({ to: "/", replace: true });
+      if (next) {
+        window.location.assign(next);
+      } else {
+        await router.navigate({ to: "/", replace: true });
+      }
     } catch {
       setError("Não foi possível validar o acesso. Tente novamente.");
     } finally {
