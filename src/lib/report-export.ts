@@ -284,7 +284,7 @@ export async function downloadReportPdf(report: SalesReport) {
     },
   });
   cursor = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
-  if (cursor > 180) {
+  if (cursor > 150) {
     doc.addPage();
     addHeader();
     cursor = 34;
