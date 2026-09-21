@@ -15,7 +15,7 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
   ssr: false,
   validateSearch: (search: Record<string, unknown>) => ({
     authorization_id:
-      typeof search.authorization_id === "string" ? search.authorization_id : "",
+      typeof search["authorization_id"] === "string" ? search["authorization_id"] : "",
   }),
   beforeLoad: async ({ search, location }) => {
     if (!search.authorization_id) throw new Error("Solicitação de autorização inválida.");
@@ -25,9 +25,10 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
       throw redirect({ to: "/unlock", search: { next } });
     }
   },
-  loader: async ({ search }) => {
+  loader: async ({ location }) => {
+    const authorizationId = new URLSearchParams(location.search).get("authorization_id") ?? "";
     const { data, error } = await supabase.auth.oauth.getAuthorizationDetails(
-      search.authorization_id,
+      authorizationId,
     );
     if (error) throw error;
     if ("redirect_url" in data) throw redirect({ href: data.redirect_url });
