@@ -10,3 +10,7 @@
 - [x] Ativar autorização OAuth para integrações de agentes
 - [x] Adicionar ferramentas MCP somente leitura
 - [x] Validar catálogo, acesso e tela de consentimento
+
+- [x] Criar base única do relatório com filtros, accounts e quarters
+- [x] Adicionar exportação em PDF e CSV
+- [x] Validar downloads, cálculos e apresentação do PDF
