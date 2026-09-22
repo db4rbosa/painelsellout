@@ -14,3 +14,9 @@
 - [x] Criar base única do relatório com filtros, accounts e quarters
 - [x] Adicionar exportação em PDF e CSV
 - [x] Validar downloads, cálculos e apresentação do PDF
+
+- [ ] Criar histórico de conversas por usuário aprovado
+- [ ] Montar contexto seguro com metas, filtros e planilha atual
+- [ ] Integrar respostas progressivas pelo AI Gateway
+- [ ] Adicionar lista e páginas dedicadas das análises
+- [ ] Validar isolamento, persistência, respostas e apresentação
