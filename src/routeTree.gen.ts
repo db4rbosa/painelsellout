@@ -10,17 +10,25 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AnalisesRouteImport } from './routes/analises'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as NovaSenhaRouteImport } from './routes/nova-senha'
 import { Route as UnlockRouteImport } from './routes/unlock'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as AnalisesThreadIdRouteImport } from './routes/analises.$threadId'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalisesRoute = AnalisesRouteImport.update({
+  id: '/analises',
+  path: '/analises',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CadastroRoute = CadastroRouteImport.update({
@@ -54,6 +62,16 @@ const Char91DotwellKnownChar93OauthProtectedResourceRoute =
     path: '/.well-known/oauth-protected-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AnalisesThreadIdRoute = AnalisesThreadIdRouteImport.update({
+  id: '/$threadId',
+  path: '/$threadId',
+  getParentRoute: () => AnalisesRoute,
+} as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   id: '/.lovable/oauth/consent',
   path: '/.lovable/oauth/consent',
@@ -62,76 +80,96 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/analises': typeof AnalisesRouteWithChildren
   '/cadastro': typeof CadastroRoute
   '/mcp': typeof McpRoute
   '/nova-senha': typeof NovaSenhaRoute
   '/unlock': typeof UnlockRoute
   '/usuarios': typeof UsuariosRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/analises/$threadId': typeof AnalisesThreadIdRoute
+  '/api/chat': typeof ApiChatRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/analises': typeof AnalisesRouteWithChildren
   '/cadastro': typeof CadastroRoute
   '/mcp': typeof McpRoute
   '/nova-senha': typeof NovaSenhaRoute
   '/unlock': typeof UnlockRoute
   '/usuarios': typeof UsuariosRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/analises/$threadId': typeof AnalisesThreadIdRoute
+  '/api/chat': typeof ApiChatRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/analises': typeof AnalisesRouteWithChildren
   '/cadastro': typeof CadastroRoute
   '/mcp': typeof McpRoute
   '/nova-senha': typeof NovaSenhaRoute
   '/unlock': typeof UnlockRoute
   '/usuarios': typeof UsuariosRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/analises/$threadId': typeof AnalisesThreadIdRoute
+  '/api/chat': typeof ApiChatRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/analises'
     | '/cadastro'
     | '/mcp'
     | '/nova-senha'
     | '/unlock'
     | '/usuarios'
     | '/.well-known/oauth-protected-resource'
+    | '/analises/$threadId'
+    | '/api/chat'
     | '/.lovable/oauth/consent'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/analises'
     | '/cadastro'
     | '/mcp'
     | '/nova-senha'
     | '/unlock'
     | '/usuarios'
     | '/.well-known/oauth-protected-resource'
+    | '/analises/$threadId'
+    | '/api/chat'
     | '/.lovable/oauth/consent'
   id:
     | '__root__'
     | '/'
+    | '/analises'
     | '/cadastro'
     | '/mcp'
     | '/nova-senha'
     | '/unlock'
     | '/usuarios'
     | '/.well-known/oauth-protected-resource'
+    | '/analises/$threadId'
+    | '/api/chat'
     | '/.lovable/oauth/consent'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AnalisesRoute: typeof AnalisesRouteWithChildren
   CadastroRoute: typeof CadastroRoute
   McpRoute: typeof McpRoute
   NovaSenhaRoute: typeof NovaSenhaRoute
   UnlockRoute: typeof UnlockRoute
   UsuariosRoute: typeof UsuariosRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  ApiChatRoute: typeof ApiChatRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
 }
 
@@ -142,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analises': {
+      id: '/analises'
+      path: '/analises'
+      fullPath: '/analises'
+      preLoaderRoute: typeof AnalisesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cadastro': {
@@ -186,6 +231,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analises/$threadId': {
+      id: '/analises/$threadId'
+      path: '/$threadId'
+      fullPath: '/analises/$threadId'
+      preLoaderRoute: typeof AnalisesThreadIdRouteImport
+      parentRoute: typeof AnalisesRoute
+    }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.lovable/oauth/consent': {
       id: '/.lovable/oauth/consent'
       path: '/.lovable/oauth/consent'
@@ -196,8 +255,21 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AnalisesRouteChildren {
+  AnalisesThreadIdRoute: typeof AnalisesThreadIdRoute
+}
+
+const AnalisesRouteChildren: AnalisesRouteChildren = {
+  AnalisesThreadIdRoute: AnalisesThreadIdRoute,
+}
+
+const AnalisesRouteWithChildren = AnalisesRoute._addFileChildren(
+  AnalisesRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AnalisesRoute: AnalisesRouteWithChildren,
   CadastroRoute: CadastroRoute,
   McpRoute: McpRoute,
   NovaSenhaRoute: NovaSenhaRoute,
@@ -205,6 +277,7 @@ const rootRouteChildren: RootRouteChildren = {
   UsuariosRoute: UsuariosRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  ApiChatRoute: ApiChatRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
 }
 export const routeTree = rootRouteImport
