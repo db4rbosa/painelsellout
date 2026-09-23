@@ -4,13 +4,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const idInput = z.object({ id: z.string().uuid() });
 
-async function requireApproved(
-  supabase: Parameters<Parameters<typeof requireSupabaseAuth>[0]>[0] extends never ? never : never,
-  _userId: string,
-) {
-  return supabase;
-}
-
 export type AiThread = { id: string; title: string; createdAt: string; updatedAt: string };
 export type AiStoredMessage = { id: string; role: "user" | "assistant"; content: string; createdAt: string };
 
