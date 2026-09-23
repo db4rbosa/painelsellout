@@ -8,6 +8,7 @@ import {
   KeyRound,
   Loader2,
   LogOut,
+  MessageSquareText,
   Sheet,
   Target,
   Upload,
@@ -464,14 +465,19 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
             </Button>
           ) : null}
           {access.kind === "user" ? (
-            <ChangePasswordDialog
-              email={access.email}
-              trigger={
-                <Button variant="outline">
-                  <KeyRound className="size-4" /> Alterar senha
-                </Button>
-              }
-            />
+            <>
+              <Button variant="outline" asChild>
+                <Link to="/analises"><MessageSquareText className="size-4" /> Análises com IA</Link>
+              </Button>
+              <ChangePasswordDialog
+                email={access.email}
+                trigger={
+                  <Button variant="outline">
+                    <KeyRound className="size-4" /> Alterar senha
+                  </Button>
+                }
+              />
+            </>
           ) : null}
           <Button variant="outline" onClick={handleLogout}>
             <LogOut className="size-4" /> Sair
