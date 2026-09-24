@@ -17,6 +17,7 @@ import { Route as NovaSenhaRouteImport } from './routes/nova-senha'
 import { Route as UnlockRouteImport } from './routes/unlock'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as AnalisesIndexRouteImport } from './routes/analises.index'
 import { Route as AnalisesThreadIdRouteImport } from './routes/analises.$threadId'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
@@ -62,6 +63,11 @@ const Char91DotwellKnownChar93OauthProtectedResourceRoute =
     path: '/.well-known/oauth-protected-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AnalisesIndexRoute = AnalisesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AnalisesRoute,
+} as any)
 const AnalisesThreadIdRoute = AnalisesThreadIdRouteImport.update({
   id: '/$threadId',
   path: '/$threadId',
@@ -89,11 +95,11 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/analises/$threadId': typeof AnalisesThreadIdRoute
   '/api/chat': typeof ApiChatRoute
+  '/analises/': typeof AnalisesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/analises': typeof AnalisesRouteWithChildren
   '/cadastro': typeof CadastroRoute
   '/mcp': typeof McpRoute
   '/nova-senha': typeof NovaSenhaRoute
@@ -102,6 +108,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/analises/$threadId': typeof AnalisesThreadIdRoute
   '/api/chat': typeof ApiChatRoute
+  '/analises': typeof AnalisesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
 }
 export interface FileRoutesById {
@@ -116,6 +123,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/analises/$threadId': typeof AnalisesThreadIdRoute
   '/api/chat': typeof ApiChatRoute
+  '/analises/': typeof AnalisesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
 }
 export interface FileRouteTypes {
@@ -131,11 +139,11 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/analises/$threadId'
     | '/api/chat'
+    | '/analises/'
     | '/.lovable/oauth/consent'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/analises'
     | '/cadastro'
     | '/mcp'
     | '/nova-senha'
@@ -144,6 +152,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/analises/$threadId'
     | '/api/chat'
+    | '/analises'
     | '/.lovable/oauth/consent'
   id:
     | '__root__'
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/analises/$threadId'
     | '/api/chat'
+    | '/analises/'
     | '/.lovable/oauth/consent'
   fileRoutesById: FileRoutesById
 }
@@ -231,6 +241,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analises/': {
+      id: '/analises/'
+      path: '/'
+      fullPath: '/analises/'
+      preLoaderRoute: typeof AnalisesIndexRouteImport
+      parentRoute: typeof AnalisesRoute
+    }
     '/analises/$threadId': {
       id: '/analises/$threadId'
       path: '/$threadId'
@@ -257,10 +274,12 @@ declare module '@tanstack/react-router' {
 
 interface AnalisesRouteChildren {
   AnalisesThreadIdRoute: typeof AnalisesThreadIdRoute
+  AnalisesIndexRoute: typeof AnalisesIndexRoute
 }
 
 const AnalisesRouteChildren: AnalisesRouteChildren = {
   AnalisesThreadIdRoute: AnalisesThreadIdRoute,
+  AnalisesIndexRoute: AnalisesIndexRoute,
 }
 
 const AnalisesRouteWithChildren = AnalisesRoute._addFileChildren(
