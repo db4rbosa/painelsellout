@@ -8,7 +8,7 @@ import { requireApprovedChatUser } from "@/lib/chat-auth.server";
 import { buildUserSalesContext } from "@/lib/chat-context.server";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createFileRoute } from "@tanstack/react-router";
-import { streamText, type UIMessage } from "ai";
+import { streamText, type ModelMessage, type UIMessage } from "ai";
 import { z } from "zod";
 
 const RequestBody = z.object({
@@ -73,7 +73,7 @@ export const Route = createFileRoute("/api/chat")({
           if (userMessageError) return new Response("Não foi possível salvar sua pergunta.", { status: 500 });
 
           const salesContext = await buildUserSalesContext(identity.userId);
-          const history = (priorRows ?? []).slice(-30).flatMap((row) =>
+          const history: ModelMessage[] = (priorRows ?? []).slice(-30).flatMap((row): ModelMessage[] =>
             row.role === "user" || row.role === "assistant"
               ? [{ role: row.role, content: row.content }]
               : [],
