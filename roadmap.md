@@ -20,3 +20,8 @@
 - [x] Integrar respostas progressivas pelo AI Gateway
 - [x] Adicionar lista e páginas dedicadas das análises
 - [ ] Validar isolamento, persistência, respostas e apresentação
+
+- [ ] Substituir o CSV-resumo por Excel detalhado com uma aba por bolso
+- [ ] Criar configuração persistente de 1 a 4 bolsos e Line of Business exclusivos
+- [ ] Generalizar metas, atingimento e gráfico para os bolsos configurados
+- [ ] Validar exportação, cálculos, persistência e apresentação dos bolsos
