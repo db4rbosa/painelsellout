@@ -6,27 +6,15 @@ import { Progress } from "@/components/ui/progress";
 import { MultiSelectFilter } from "@/components/MultiSelectFilter";
 import { NumberInput } from "@/components/NumberInput";
 import { fmtPct, fmtUSD } from "@/lib/sales-data";
-import type {
-  AttainmentResult,
-  AttainmentRow,
-  QuarterAccounts,
-  Targets,
-} from "@/lib/targets";
+import type { AttainmentResult, AttainmentRow, BucketDefinition, QuarterAccounts, Targets } from "@/lib/targets";
 import { cn } from "@/lib/utils";
 
 const QUARTERS = [1, 2, 3, 4] as const;
-
-const toneFor = (attainment: number | null) =>
-  attainment === null
-    ? "text-muted-foreground"
-    : attainment >= 1
-      ? "text-[var(--positive)]"
-      : attainment >= 0.8
-        ? "text-accent"
-        : "text-destructive";
+const toneFor = (value: number | null) => value === null
+  ? "text-muted-foreground"
+  : value >= 1 ? "text-[var(--positive)]" : value >= 0.8 ? "text-accent" : "text-destructive";
 
 function AttainmentBlock({ title, row }: { title: string; row: AttainmentRow }) {
-  const percent = row.attainment === null ? 0 : Math.min(row.attainment * 100, 100);
   return (
     <div className="rounded-md border border-border bg-muted/30 p-4">
       <div className="flex items-baseline justify-between gap-3">
@@ -35,10 +23,9 @@ function AttainmentBlock({ title, row }: { title: string; row: AttainmentRow }) 
           {row.attainment === null ? "—" : fmtPct(row.attainment)}
         </span>
       </div>
-      <Progress value={percent} className="mt-3" />
+      <Progress value={row.attainment === null ? 0 : Math.min(row.attainment * 100, 100)} className="mt-3" />
       <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-        <span>Real {fmtUSD(row.actual)}</span>
-        <span>Meta {fmtUSD(row.target)}</span>
+        <span>Real {fmtUSD(row.actual)}</span><span>Meta {fmtUSD(row.target)}</span>
       </div>
     </div>
   );
@@ -46,6 +33,7 @@ function AttainmentBlock({ title, row }: { title: string; row: AttainmentRow }) 
 
 type Props = {
   accountOptions: string[];
+  buckets: BucketDefinition[];
   selectedQuarters: number[];
   onSelectedQuartersChange: (quarters: number[]) => void;
   accountsByQuarter: QuarterAccounts;
@@ -55,16 +43,7 @@ type Props = {
   attainment: AttainmentResult;
 };
 
-export function TargetPanel({
-  accountOptions,
-  selectedQuarters,
-  onSelectedQuartersChange,
-  accountsByQuarter,
-  onAccountsByQuarterChange,
-  targets,
-  onChange,
-  attainment,
-}: Props) {
+export function TargetPanel({ accountOptions, buckets, selectedQuarters, onSelectedQuartersChange, accountsByQuarter, onAccountsByQuarterChange, targets, onChange, attainment }: Props) {
   const toggleQuarter = (quarter: number) => {
     const next = selectedQuarters.includes(quarter)
       ? selectedQuarters.filter((value) => value !== quarter)
@@ -72,133 +51,58 @@ export function TargetPanel({
     if (next.length) onSelectedQuartersChange(next);
   };
 
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Quarters avaliados</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {QUARTERS.map((quarter) => {
-              const active = selectedQuarters.includes(quarter);
-              return (
-                <Button
-                  key={quarter}
-                  type="button"
-                  variant={active ? "default" : "outline"}
-                  onClick={() => toggleQuarter(quarter)}
-                  aria-pressed={active}
-                >
-                  {active ? <Check /> : null} Q{quarter}
-                </Button>
-              );
+  return <div className="space-y-6">
+    <Card>
+      <CardHeader className="pb-3"><CardTitle className="text-base">Quarters avaliados</CardTitle></CardHeader>
+      <CardContent><div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {QUARTERS.map((quarter) => {
+          const active = selectedQuarters.includes(quarter);
+          return <Button key={quarter} type="button" variant={active ? "default" : "outline"} onClick={() => toggleQuarter(quarter)} aria-pressed={active}>{active ? <Check /> : null} Q{quarter}</Button>;
+        })}
+      </div></CardContent>
+    </Card>
+
+    <div className="grid gap-5 xl:grid-cols-2">
+      {selectedQuarters.map((quarter) => <Card key={quarter}>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Layers3 className="size-4 text-primary" /> Q{quarter}</CardTitle></CardHeader>
+        <CardContent className="space-y-5">
+          <MultiSelectFilter label={`Accounts do Q${quarter}`} options={accountOptions} selected={accountsByQuarter[quarter] ?? []} onChange={(values) => values.length && onAccountsByQuarterChange(quarter, values)} placeholder="Selecione ao menos um account" showChips />
+          <div className="grid gap-4 sm:grid-cols-2">
+            {buckets.map((bucket) => <div key={bucket.id} className="space-y-2">
+              <Label htmlFor={`target-${bucket.id}-q${quarter}`}>Meta {bucket.name} Q{quarter} (USD)</Label>
+              <NumberInput id={`target-${bucket.id}-q${quarter}`} value={targets.byBucket[bucket.id]?.[quarter - 1] ?? 0} onChange={(value) => {
+                const quarterValues = [...(targets.byBucket[bucket.id] ?? [0, 0, 0, 0])] as [number, number, number, number];
+                quarterValues[quarter - 1] = value;
+                onChange({ ...targets, byBucket: { ...targets.byBucket, [bucket.id]: quarterValues } });
+              }} />
+            </div>)}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {attainment.buckets.map((bucket) => {
+              const row = bucket.quarters[quarter - 1];
+              return row ? <AttainmentBlock key={bucket.id} title={`Atingimento · ${bucket.name}`} row={row} /> : null;
             })}
           </div>
         </CardContent>
-      </Card>
-
-      <div className="grid gap-5 xl:grid-cols-2">
-        {selectedQuarters.map((quarter) => {
-          const index = quarter - 1;
-          const general = attainment.quarters[index];
-          const services = attainment.servicesQuarters[index];
-          if (!general || !services) return null;
-          return (
-            <Card key={quarter}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Layers3 className="size-4 text-primary" /> Q{quarter}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <MultiSelectFilter
-                  label={`Accounts do Q${quarter}`}
-                  options={accountOptions}
-                  selected={accountsByQuarter[quarter] ?? []}
-                  onChange={(values) => {
-                    if (values.length) onAccountsByQuarterChange(quarter, values);
-                  }}
-                  placeholder="Selecione ao menos um account"
-                  showChips
-                />
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor={`target-q${quarter}`}>Meta geral Q{quarter} (USD)</Label>
-                    <NumberInput
-                      id={`target-q${quarter}`}
-                      value={targets.quarters[index] ?? 0}
-                      onChange={(value) => {
-                        const quarters = [...targets.quarters] as Targets["quarters"];
-                        quarters[index] = value;
-                        onChange({ ...targets, quarters });
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor={`services-q${quarter}`}>Meta de Serviços Q{quarter} (USD)</Label>
-                    <NumberInput
-                      id={`services-q${quarter}`}
-                      value={targets.servicesQuarters[index] ?? 0}
-                      onChange={(value) => {
-                        const servicesQuarters = [
-                          ...targets.servicesQuarters,
-                        ] as Targets["servicesQuarters"];
-                        servicesQuarters[index] = value;
-                        onChange({ ...targets, servicesQuarters });
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <AttainmentBlock title="Atingimento de vendas" row={general} />
-                  <AttainmentBlock title="Atingimento de Serviços" row={services} />
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Total dos quarters selecionados</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <AttainmentBlock title="Total de vendas" row={{ label: "Total", ...attainment.total }} />
-          <AttainmentBlock
-            title="Total de Serviços"
-            row={{ label: "Services", ...attainment.servicesTotal }}
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Atingimento mês a mês</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {attainment.months.map((month, index) => {
-            const servicesMonth = attainment.servicesMonths[index];
-            if (
-              !servicesMonth ||
-              (month.actual <= 0 &&
-                month.target <= 0 &&
-                servicesMonth.actual <= 0 &&
-                servicesMonth.target <= 0)
-            ) {
-              return null;
-            }
-            return (
-              <div key={month.label} className="space-y-3">
-                <p className="text-sm font-semibold">{month.label}</p>
-                <AttainmentBlock title="Vendas" row={month} />
-                <AttainmentBlock title="Serviços" row={servicesMonth} />
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
+      </Card>)}
     </div>
-  );
+
+    <Card>
+      <CardHeader><CardTitle className="text-base">Total dos quarters selecionados</CardTitle></CardHeader>
+      <CardContent className="grid gap-4 md:grid-cols-2">
+        {attainment.buckets.map((bucket) => <AttainmentBlock key={bucket.id} title={`Total · ${bucket.name}`} row={{ label: "Total", ...bucket.total }} />)}
+      </CardContent>
+    </Card>
+
+    <Card>
+      <CardHeader><CardTitle className="text-base">Atingimento mês a mês</CardTitle></CardHeader>
+      <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 12 }, (_, index) => {
+          const rows = attainment.buckets.map((bucket) => ({ bucket, row: bucket.months[index] })).filter((item) => item.row && (item.row.actual > 0 || item.row.target > 0));
+          if (!rows.length) return null;
+          return <div key={index} className="space-y-3"><p className="text-sm font-semibold">{rows[0]?.row?.label}</p>{rows.map(({ bucket, row }) => row ? <AttainmentBlock key={bucket.id} title={bucket.name} row={row} /> : null)}</div>;
+        })}
+      </CardContent>
+    </Card>
+  </div>;
 }
