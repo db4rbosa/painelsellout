@@ -29,6 +29,11 @@ export default defineTool({
       chartType: prefs.chartType,
       stacked: prefs.stacked,
       topN: prefs.topN,
+      buckets: prefs.buckets.map((bucket) => ({
+        id: bucket.id,
+        name: bucket.name,
+        lineOfBusiness: [...bucket.lineOfBusiness],
+      })),
       selectedQuarters: [...prefs.selectedQuarters],
       accountsByQuarter: Object.fromEntries(
         Object.entries(prefs.accountsByQuarter).map(([quarter, accounts]) => [
@@ -41,8 +46,9 @@ export default defineTool({
           group,
           {
             annual: targets.annual,
-            quarters: [...targets.quarters],
-            servicesQuarters: [...targets.servicesQuarters],
+            byBucket: Object.fromEntries(
+              Object.entries(targets.byBucket).map(([bucketId, values]) => [bucketId, [...values]]),
+            ),
           },
         ]),
       ),

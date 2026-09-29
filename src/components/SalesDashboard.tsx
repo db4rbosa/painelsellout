@@ -37,6 +37,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EvolutionChart } from "@/components/EvolutionChart";
+import { BucketConfig } from "@/components/BucketConfig";
 import { TargetPanel } from "@/components/TargetPanel";
 import { MultiSelectFilter } from "@/components/MultiSelectFilter";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
@@ -62,13 +63,14 @@ import {
   buildAttainment,
   emptyTargets,
   groupKey,
+  type BucketDefinition,
   type QuarterAccounts,
   type Targets,
 } from "@/lib/targets";
 import { defaultPrefs, normalizePrefs, type DashboardPrefs } from "@/lib/prefs";
 import {
   buildSalesReport,
-  downloadReportCsv,
+  downloadReportExcel,
   downloadReportPdf,
 } from "@/lib/report-export";
 import { logout } from "@/lib/gate.functions";
@@ -101,6 +103,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
   const [savingState, setSavingState] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
 
   const [accounts, setAccounts] = useState<string[]>([]);
@@ -112,12 +115,13 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const [chartType, setChartType] = useState<"area" | "line" | "bar">("area");
   const [stacked, setStacked] = useState(true);
   const [topN, setTopN] = useState(8);
+  const [buckets, setBuckets] = useState<BucketDefinition[]>(defaultPrefs().buckets);
   const [targetsByGroup, setTargetsByGroup] = useState<Record<string, Targets>>({});
   const [selectedQuarters, setSelectedQuarters] = useState<number[]>([1, 2, 3, 4]);
   const [accountsByQuarter, setAccountsByQuarter] = useState<QuarterAccounts>({});
 
   const currentGroupKey = groupKey(accounts);
-  const targets = targetsByGroup[currentGroupKey] ?? emptyTargets();
+  const targets = targetsByGroup[currentGroupKey] ?? emptyTargets(buckets);
 
   useEffect(() => {
     const idle = (
@@ -140,6 +144,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     setChartType(prefs.chartType);
     setStacked(prefs.stacked);
     setTopN(prefs.topN);
+    setBuckets(prefs.buckets);
     setTargetsByGroup(prefs.targetsByGroup);
     setSelectedQuarters(prefs.selectedQuarters);
     setAccountsByQuarter(prefs.accountsByQuarter);
@@ -192,6 +197,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
       chartType,
       stacked,
       topN,
+      buckets,
       targetsByGroup,
       selectedQuarters,
       accountsByQuarter,
@@ -216,6 +222,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     chartType,
     stacked,
     topN,
+    buckets,
     targetsByGroup,
     selectedQuarters,
     accountsByQuarter,
@@ -230,6 +237,11 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const targetAccountOptions = useMemo(
     () => (accounts.length ? accountOptions.filter((account) => accounts.includes(account)) : accountOptions),
     [accountOptions, accounts],
+  );
+
+  const lineOfBusinessOptions = useMemo(
+    () => (rows.length ? uniqueValues(rows, "lob") : []),
+    [rows],
   );
 
   useEffect(() => {
@@ -292,8 +304,8 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   }, [scopedRows, groupBy]);
 
   const attainment = useMemo(
-    () => buildAttainment(scopedRows, targets, selectedQuarters, accountsByQuarter),
-    [scopedRows, targets, selectedQuarters, accountsByQuarter],
+    () => buildAttainment(scopedRows, targets, buckets, selectedQuarters, accountsByQuarter),
+    [scopedRows, targets, buckets, selectedQuarters, accountsByQuarter],
   );
 
   const report = useMemo(
@@ -305,6 +317,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
         filters,
         selectedQuarters,
         accountsByQuarter,
+        buckets,
         attainment,
       }),
     [
@@ -314,39 +327,28 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
       filters,
       selectedQuarters,
       accountsByQuarter,
+      buckets,
       attainment,
     ],
   );
 
   const cumulativeAttainment = useMemo(() => {
-    let salesActual = 0;
-    let salesTarget = 0;
-    let servicesActual = 0;
-    let servicesTarget = 0;
-
-    return attainment.months.flatMap((month, index) => {
-      const servicesMonth = attainment.servicesMonths[index];
-      if (!servicesMonth) return [];
-      if (
-        month.actual <= 0 &&
-        month.target <= 0 &&
-        servicesMonth.actual <= 0 &&
-        servicesMonth.target <= 0
-      ) {
-        return [];
+    const totals = new Map(attainment.buckets.map((bucket) => [bucket.id, { actual: 0, target: 0 }]));
+    return Array.from({ length: 12 }, (_, index) => {
+      const point: Record<string, string | number> = { period: attainment.buckets[0]?.months[index]?.label ?? String(index + 1) };
+      let visible = false;
+      for (const bucket of attainment.buckets) {
+        const month = bucket.months[index];
+        const total = totals.get(bucket.id);
+        if (!month || !total) continue;
+        total.actual += month.actual;
+        total.target += month.target;
+        point[`${bucket.name} · realizado`] = Math.round(total.actual);
+        point[`${bucket.name} · meta`] = Math.round(total.target);
+        if (month.actual > 0 || month.target > 0) visible = true;
       }
-      salesActual += month.actual;
-      salesTarget += month.target;
-      servicesActual += servicesMonth.actual;
-      servicesTarget += servicesMonth.target;
-      return [{
-        period: month.label,
-        "Vendas realizadas": Math.round(salesActual),
-        "Meta de vendas": Math.round(salesTarget),
-        "Serviços realizados": Math.round(servicesActual),
-        "Meta de Serviços": Math.round(servicesTarget),
-      }];
-    });
+      return visible ? point : null;
+    }).filter((point): point is Record<string, string | number> => point !== null);
   }, [attainment]);
 
   const totalRevenue = useMemo(() => sum(scopedRows), [scopedRows]);
@@ -407,6 +409,18 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     }
   };
 
+  const handleExcelExport = async () => {
+    setExportingExcel(true);
+    setError("");
+    try {
+      await downloadReportExcel(report, scopedRows, accountsByQuarter);
+    } catch {
+      setError("Não foi possível gerar a planilha em Excel.");
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
   const valueFormatter = (v: number) =>
     metric === "revenue" ? fmtUSD(v) : `${new Intl.NumberFormat("pt-BR").format(v)} un.`;
 
@@ -427,8 +441,9 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
         <div className="flex flex-wrap items-center gap-2">
           {rows.length ? (
             <>
-              <Button variant="outline" onClick={() => downloadReportCsv(report)}>
-                <Sheet className="size-4" /> Exportar CSV
+              <Button variant="outline" onClick={handleExcelExport} disabled={exportingExcel}>
+                {exportingExcel ? <Loader2 className="size-4 animate-spin" /> : <Sheet className="size-4" />}
+                Exportar Excel
               </Button>
               <Button variant="outline" onClick={handlePdfExport} disabled={exportingPdf}>
                 {exportingPdf ? (
@@ -586,6 +601,12 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
               </div>
             </CardContent>
           </Card>
+
+          <BucketConfig
+            buckets={buckets}
+            lineOfBusinessOptions={lineOfBusinessOptions}
+            onChange={setBuckets}
+          />
 
           <Tabs defaultValue="evolucao">
             <TabsList>
@@ -750,6 +771,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
             <TabsContent value="metas" className="mt-6">
               <TargetPanel
                 accountOptions={targetAccountOptions}
+                buckets={buckets}
                 selectedQuarters={selectedQuarters}
                 onSelectedQuartersChange={setSelectedQuarters}
                 accountsByQuarter={accountsByQuarter}
@@ -765,12 +787,10 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
                 <CardContent>
                   <EvolutionChart
                     data={cumulativeAttainment}
-                    keys={[
-                      "Vendas realizadas",
-                      "Meta de vendas",
-                      "Serviços realizados",
-                      "Meta de Serviços",
-                    ]}
+                    keys={attainment.buckets.flatMap((bucket) => [
+                      `${bucket.name} · realizado`,
+                      `${bucket.name} · meta`,
+                    ])}
                     type="line"
                     stacked={false}
                     valueFormatter={fmtUSD}

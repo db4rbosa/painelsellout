@@ -70,6 +70,7 @@ export async function buildUserSalesContext(userId: string) {
   const attainment = buildAttainment(
     scopedRows,
     targets,
+    prefs.buckets,
     prefs.selectedQuarters,
     accountsByQuarter,
   );
@@ -80,6 +81,7 @@ export async function buildUserSalesContext(userId: string) {
     filters: prefs.filters,
     selectedQuarters: prefs.selectedQuarters,
     accountsByQuarter,
+    buckets: prefs.buckets,
     attainment,
   });
 
