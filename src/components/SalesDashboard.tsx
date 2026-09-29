@@ -58,6 +58,7 @@ import {
   type Filters,
   type Granularity,
   type SalesRow,
+  type SeriesPoint,
 } from "@/lib/sales-data";
 import {
   buildAttainment,
@@ -335,7 +336,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const cumulativeAttainment = useMemo(() => {
     const totals = new Map(attainment.buckets.map((bucket) => [bucket.id, { actual: 0, target: 0 }]));
     return Array.from({ length: 12 }, (_, index) => {
-      const point: Record<string, string | number> = { period: attainment.buckets[0]?.months[index]?.label ?? String(index + 1) };
+      const point: SeriesPoint = { period: attainment.buckets[0]?.months[index]?.label ?? String(index + 1) };
       let visible = false;
       for (const bucket of attainment.buckets) {
         const month = bucket.months[index];
@@ -348,7 +349,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
         if (month.actual > 0 || month.target > 0) visible = true;
       }
       return visible ? point : null;
-    }).filter((point): point is Record<string, string | number> => point !== null);
+    }).filter((point): point is SeriesPoint => point !== null);
   }, [attainment]);
 
   const totalRevenue = useMemo(() => sum(scopedRows), [scopedRows]);
