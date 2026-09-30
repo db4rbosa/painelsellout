@@ -12,7 +12,7 @@
 - [x] Validar catálogo, acesso e tela de consentimento
 
 - [x] Criar base única do relatório com filtros, accounts e quarters
-- [x] Adicionar exportação em PDF e CSV
+- [x] Adicionar exportação em PDF e Excel detalhado
 - [x] Validar downloads, cálculos e apresentação do PDF
 
 - [x] Criar histórico de conversas por usuário aprovado
@@ -21,7 +21,7 @@
 - [x] Adicionar lista e páginas dedicadas das análises
 - [ ] Validar isolamento, persistência, respostas e apresentação
 
-- [ ] Substituir o CSV-resumo por Excel detalhado com uma aba por bolso
-- [ ] Criar configuração persistente de 1 a 4 bolsos e Line of Business exclusivos
-- [ ] Generalizar metas, atingimento e gráfico para os bolsos configurados
-- [ ] Validar exportação, cálculos, persistência e apresentação dos bolsos
+- [x] Substituir o CSV-resumo por Excel detalhado com uma aba por bolso
+- [x] Criar configuração persistente de 1 a 4 bolsos e Line of Business exclusivos
+- [x] Generalizar metas, atingimento e gráfico para os bolsos configurados
+- [x] Validar exportação, cálculos, persistência e apresentação dos bolsos
