@@ -25,3 +25,8 @@
 - [x] Criar configuração persistente de 1 a 4 bolsos e Line of Business exclusivos
 - [x] Generalizar metas, atingimento e gráfico para os bolsos configurados
 - [x] Validar exportação, cálculos, persistência e apresentação dos bolsos
+
+- [ ] Agrupar Ranking por Cliente Final por Account e adicionar detalhamento clicável
+- [ ] Mover filtros e configuração de bolsos para Configurações do Sistema
+- [ ] Permitir LOBs repetidas entre bolsos e manter cálculos por bolso
+- [ ] Validar estados, cálculos e apresentação das novas melhorias
