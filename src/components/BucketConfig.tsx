@@ -33,17 +33,11 @@ export function BucketConfig({ buckets, lineOfBusinessOptions, onChange }: Props
   };
 
   const assign = (index: number, values: string[]) => {
-    const selected = new Set(values.map((value) => value.trim().toLocaleLowerCase("en-US")));
-    onChange(buckets.map((bucket, itemIndex) => ({
-      ...bucket,
-      lineOfBusiness: itemIndex === index
-        ? values
-        : bucket.lineOfBusiness.filter((value) => !selected.has(value.trim().toLocaleLowerCase("en-US"))),
-    })));
+    update(index, { lineOfBusiness: values });
   };
 
   return (
-    <Card className="mb-6">
+    <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Layers3 className="size-4 text-primary" /> Configuração de bolsos

@@ -9,6 +9,4 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- Model Line of Business groupings as 1–4 persisted, mutually exclusive buckets; all targets, attainment, reports, and AI context derive from this single configuration to prevent divergent totals.
-
-- Allow the same Line of Business in multiple configured buckets; each bucket calculates its own full contribution independently.
+- Model Line of Business groupings as 1–4 persisted buckets; a LOB may belong to multiple buckets and contributes fully to each, while all targets, reports, and AI context derive from this configuration.
