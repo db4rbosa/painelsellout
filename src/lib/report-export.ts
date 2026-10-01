@@ -1,5 +1,5 @@
 import { FILTER_DIMS, FILTER_LABELS, type Filters, type SalesRow } from "./sales-data";
-import { bucketForRow, type AttainmentResult, type BucketDefinition, type QuarterAccounts } from "./targets";
+import { bucketsForRow, type AttainmentResult, type BucketDefinition, type QuarterAccounts } from "./targets";
 
 export type ReportContext = {
   fileName: string;
@@ -102,7 +102,7 @@ export async function downloadReportExcel(report: SalesReport, rows: SalesRow[],
     const details = rows.filter((row) => {
       if (!selected.has(row.fiscalQuarter)) return false;
       const accounts = accountsByQuarter[row.fiscalQuarter] ?? [];
-      return (!accounts.length || accounts.includes(row.account)) && bucketForRow(row, [bucket]) !== undefined;
+      return (!accounts.length || accounts.includes(row.account)) && bucketsForRow(row, [bucket]).length > 0;
     });
     const sheet = XLSX.utils.aoa_to_sheet([ROW_HEADERS, ...details.map(rowValues)]);
     sheet["!autofilter"] = { ref: `A1:S${Math.max(1, details.length + 1)}` };

@@ -57,16 +57,16 @@ const quarterValues = (value: unknown): QuarterValues => {
 
 const normalizeBuckets = (value: unknown): BucketDefinition[] => {
   if (!Array.isArray(value)) return defaultPrefs().buckets;
-  const used = new Set<string>();
   const buckets = value.slice(0, 4).flatMap((item, index) => {
     if (!item || typeof item !== "object") return [];
     const raw = item as Record<string, unknown>;
     const id = typeof raw["id"] === "string" && raw["id"] ? raw["id"] : `bucket-${index + 1}`;
     const name = typeof raw["name"] === "string" && raw["name"].trim() ? raw["name"].trim() : `Bolso ${index + 1}`;
+    const seen = new Set<string>();
     const lineOfBusiness = strArray(raw["lineOfBusiness"]).filter((lob) => {
       const key = lob.trim().toLocaleLowerCase("en-US");
-      if (!key || used.has(key)) return false;
-      used.add(key);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
       return true;
     });
     return [{ id, name, lineOfBusiness }];

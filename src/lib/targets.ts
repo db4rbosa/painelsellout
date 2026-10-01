@@ -38,10 +38,15 @@ export const groupKey = (accounts: string[]): string =>
 
 export const normalizeLob = (value: string) => value.trim().toLocaleLowerCase("en-US");
 
-export const bucketForRow = (row: SalesRow, buckets: BucketDefinition[]) => {
+export const bucketsForRow = (row: SalesRow, buckets: BucketDefinition[]) => {
   const lob = normalizeLob(row.lob);
-  return buckets.find((bucket) => bucket.lineOfBusiness.some((value) => normalizeLob(value) === lob));
+  return buckets.filter((bucket) =>
+    bucket.lineOfBusiness.some((value) => normalizeLob(value) === lob),
+  );
 };
+
+export const bucketForRow = (row: SalesRow, buckets: BucketDefinition[]) =>
+  bucketsForRow(row, buckets)[0];
 
 export type AttainmentRow = {
   label: string;
@@ -99,11 +104,11 @@ export function buildAttainment(
     if (!selected.has(row.fiscalQuarter)) continue;
     const quarterAccounts = accountSets.get(row.fiscalQuarter);
     if (!quarterAccounts?.size || !quarterAccounts.has(row.account)) continue;
-    const bucket = bucketForRow(row, buckets);
-    const values = bucket ? actuals.get(bucket.id) : undefined;
     const monthIndex = row.fiscalMonth - 1;
-    if (values && monthIndex >= 0 && monthIndex < 12) {
-      values[monthIndex] = (values[monthIndex] ?? 0) + row.revenue;
+    if (monthIndex < 0 || monthIndex >= 12) continue;
+    for (const bucket of bucketsForRow(row, buckets)) {
+      const values = actuals.get(bucket.id);
+      if (values) values[monthIndex] = (values[monthIndex] ?? 0) + row.revenue;
     }
   }
 
