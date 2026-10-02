@@ -3,8 +3,8 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
   BarChart3,
+  Building2,
   FileDown,
-  Filter,
   KeyRound,
   Loader2,
   LogOut,
@@ -41,6 +41,8 @@ import { BucketConfig } from "@/components/BucketConfig";
 import { TargetPanel } from "@/components/TargetPanel";
 import { MultiSelectFilter } from "@/components/MultiSelectFilter";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
+import { CustomerDetailsDialog } from "@/components/CustomerDetailsDialog";
+import { SystemSettingsSheet } from "@/components/SystemSettingsSheet";
 import {
   DIMENSIONS,
   FILTER_DIMS,
@@ -120,6 +122,10 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const [targetsByGroup, setTargetsByGroup] = useState<Record<string, Targets>>({});
   const [selectedQuarters, setSelectedQuarters] = useState<number[]>([1, 2, 3, 4]);
   const [accountsByQuarter, setAccountsByQuarter] = useState<QuarterAccounts>({});
+  const [selectedCustomer, setSelectedCustomer] = useState<{
+    account: string;
+    customer: string;
+  } | null>(null);
 
   const currentGroupKey = groupKey(accounts);
   const targets = targetsByGroup[currentGroupKey] ?? emptyTargets(buckets);
@@ -288,7 +294,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   );
 
   const ranking = useMemo(() => {
-    if (groupBy === "none") return [];
+    if (groupBy === "none" || groupBy === "endUser") return [];
     const map = new Map<string, { revenue: number; quantity: number; lines: number }>();
     for (const r of scopedRows) {
       const k = r[groupBy];
@@ -302,6 +308,35 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
       .map(([name, v]) => ({ name, ...v }))
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 25);
+  }, [scopedRows, groupBy]);
+
+  const customerRanking = useMemo(() => {
+    if (groupBy !== "endUser") return [];
+    const accountsMap = new Map<
+      string,
+      Map<string, { revenue: number; quantity: number; lines: number }>
+    >();
+    for (const row of scopedRows) {
+      const customers = accountsMap.get(row.account) ?? new Map();
+      const current = customers.get(row.endUser) ?? { revenue: 0, quantity: 0, lines: 0 };
+      current.revenue += row.revenue;
+      current.quantity += row.quantity;
+      current.lines += 1;
+      customers.set(row.endUser, current);
+      accountsMap.set(row.account, customers);
+    }
+    return [...accountsMap.entries()]
+      .map(([account, customers]) => {
+        const items = [...customers.entries()]
+          .map(([name, values]) => ({ name, ...values }))
+          .sort((a, b) => b.revenue - a.revenue);
+        return {
+          account,
+          revenue: items.reduce((total, item) => total + item.revenue, 0),
+          items,
+        };
+      })
+      .sort((a, b) => b.revenue - a.revenue);
   }, [scopedRows, groupBy]);
 
   const attainment = useMemo(
@@ -440,6 +475,18 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <SystemSettingsSheet
+            accounts={accounts}
+            accountOptions={accountOptions}
+            filters={filters}
+            filterOptions={filterOptions}
+            buckets={buckets}
+            lineOfBusinessOptions={lineOfBusinessOptions}
+            scopedLineCount={scopedRows.length}
+            onAccountsChange={setAccounts}
+            onFiltersChange={setFilters}
+            onBucketsChange={setBuckets}
+          />
           {rows.length ? (
             <>
               <Button variant="outline" onClick={handleExcelExport} disabled={exportingExcel}>
@@ -560,54 +607,6 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
               </Card>
             ))}
           </div>
-
-          <Card className="mb-6">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex flex-wrap items-center gap-2 text-base">
-                <Filter className="size-4 text-primary" /> Escopo e filtros
-                <Badge variant="secondary">{scopedRows.length} linhas no escopo</Badge>
-                {accounts.length || activeFilters ? (
-                  <button
-                    type="button"
-                    className="ml-auto text-xs text-muted-foreground underline-offset-2 hover:underline"
-                    onClick={() => {
-                      setAccounts([]);
-                      setFilters(emptyFilters());
-                    }}
-                  >
-                    limpar tudo
-                  </button>
-                ) : null}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <MultiSelectFilter
-                label="Accounts (vendedores)"
-                options={accountOptions}
-                selected={accounts}
-                onChange={setAccounts}
-                placeholder="Todos os accounts"
-                showChips
-              />
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                {FILTER_DIMS.map((k) => (
-                  <MultiSelectFilter
-                    key={k}
-                    label={FILTER_LABELS[k]}
-                    options={filterOptions[k]}
-                    selected={filters[k]}
-                    onChange={(values) => setFilters((f) => ({ ...f, [k]: values }))}
-                  />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <BucketConfig
-            buckets={buckets}
-            lineOfBusinessOptions={lineOfBusinessOptions}
-            onChange={setBuckets}
-          />
 
           <Tabs defaultValue="evolucao">
             <TabsList>
@@ -767,6 +766,71 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
                   </CardContent>
                 </Card>
               ) : null}
+
+              {customerRanking.length ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Ranking por Cliente Final</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-8">
+                    {customerRanking.map((accountGroup) => (
+                      <section key={accountGroup.account}>
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+                          <h3 className="flex items-center gap-2 font-semibold">
+                            <Building2 className="size-4 text-primary" /> {accountGroup.account}
+                          </h3>
+                          <Badge variant="secondary">
+                            {accountGroup.items.length} clientes · {fmtUSD(accountGroup.revenue)}
+                          </Badge>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>#</TableHead>
+                                <TableHead>Cliente Final</TableHead>
+                                <TableHead className="text-right">Receita</TableHead>
+                                <TableHead className="text-right">Qtd.</TableHead>
+                                <TableHead className="text-right">Linhas</TableHead>
+                                <TableHead className="text-right">% do Account</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {accountGroup.items.map((customer, index) => (
+                                <TableRow key={`${accountGroup.account}-${customer.name}`}>
+                                  <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                                  <TableCell className="max-w-[380px]">
+                                    <Button
+                                      variant="link"
+                                      className="h-auto max-w-full justify-start whitespace-normal p-0 text-left"
+                                      onClick={() =>
+                                        setSelectedCustomer({
+                                          account: accountGroup.account,
+                                          customer: customer.name,
+                                        })
+                                      }
+                                    >
+                                      {customer.name}
+                                    </Button>
+                                  </TableCell>
+                                  <TableCell className="text-right">{fmtUSD(customer.revenue)}</TableCell>
+                                  <TableCell className="text-right">{customer.quantity}</TableCell>
+                                  <TableCell className="text-right">{customer.lines}</TableCell>
+                                  <TableCell className="text-right">
+                                    {accountGroup.revenue > 0
+                                      ? `${((customer.revenue / accountGroup.revenue) * 100).toFixed(1)}%`
+                                      : "—"}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </section>
+                    ))}
+                  </CardContent>
+                </Card>
+              ) : null}
             </TabsContent>
 
             <TabsContent value="metas" className="mt-6">
@@ -802,6 +866,13 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           </Tabs>
         </>
       )}
+      <CustomerDetailsDialog
+        selection={selectedCustomer}
+        rows={scopedRows}
+        onOpenChange={(open) => {
+          if (!open) setSelectedCustomer(null);
+        }}
+      />
     </main>
   );
 }
