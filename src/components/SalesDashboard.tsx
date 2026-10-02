@@ -37,18 +37,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EvolutionChart } from "@/components/EvolutionChart";
-import { BucketConfig } from "@/components/BucketConfig";
 import { TargetPanel } from "@/components/TargetPanel";
-import { MultiSelectFilter } from "@/components/MultiSelectFilter";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import { CustomerDetailsDialog } from "@/components/CustomerDetailsDialog";
 import { SystemSettingsSheet } from "@/components/SystemSettingsSheet";
 import {
   DIMENSIONS,
   FILTER_DIMS,
-  FILTER_LABELS,
   buildSeries,
-  countActiveFilters,
   emptyFilters,
   filterRows,
   fmtUSD,
@@ -389,8 +385,6 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
 
   const totalRevenue = useMemo(() => sum(scopedRows), [scopedRows]);
   const totalQty = useMemo(() => sum(scopedRows, "quantity"), [scopedRows]);
-  const activeFilters = countActiveFilters(filters);
-
   const handleFile = async (file?: File | null) => {
     if (!file) return;
     setLoading(true);

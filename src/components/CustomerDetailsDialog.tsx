@@ -46,7 +46,7 @@ export function CustomerDetailsDialog({ selection, rows, onOpenChange }: Props) 
   const revenue = useMemo(() => sum(customerRows), [customerRows]);
   const quantity = useMemo(() => sum(customerRows, "quantity"), [customerRows]);
   const detailRows = useMemo(
-    () => [...customerRows].sort((a, b) => b.revenue - a.revenue).slice(0, 100),
+    () => [...customerRows].sort((a, b) => b.revenue - a.revenue),
     [customerRows],
   );
 
@@ -98,7 +98,7 @@ export function CustomerDetailsDialog({ selection, rows, onOpenChange }: Props) 
             <section>
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h3 className="font-semibold">Linhas de venda</h3>
-                <Badge variant="secondary">Até 100 maiores valores</Badge>
+                <Badge variant="secondary">{detailRows.length} linhas</Badge>
               </div>
               <div className="overflow-x-auto rounded-md border border-border">
                 <Table>
