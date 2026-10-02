@@ -131,7 +131,12 @@ export function buildAttainment(
           .slice((quarter - 1) * 3, quarter * 3)
           .reduce((sum, value) => sum + value, 0);
         const target = quarterTargets[quarter - 1] ?? 0;
-        return { label: `Q${quarter}`, actual, target, attainment: target > 0 ? actual / target : null };
+        return {
+          label: `Q${quarter}`,
+          actual,
+          target,
+          attainment: target > 0 ? actual / target : null,
+        };
       });
       const included = [...selected].map((quarter) => quarter - 1);
       const actual = included.reduce((sum, index) => sum + (quarters[index]?.actual ?? 0), 0);

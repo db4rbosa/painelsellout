@@ -29,7 +29,11 @@ export function BucketConfig({ buckets, lineOfBusinessOptions, onChange }: Props
   };
 
   const update = (index: number, changes: Partial<BucketDefinition>) => {
-    onChange(buckets.map((bucket, itemIndex) => itemIndex === index ? { ...bucket, ...changes } : bucket));
+    onChange(
+      buckets.map((bucket, itemIndex) =>
+        itemIndex === index ? { ...bucket, ...changes } : bucket,
+      ),
+    );
   };
 
   const assign = (index: number, values: string[]) => {
@@ -47,15 +51,24 @@ export function BucketConfig({ buckets, lineOfBusinessOptions, onChange }: Props
         <div className="max-w-xs space-y-2">
           <Label>Quantidade de bolsos</Label>
           <Select value={String(buckets.length)} onValueChange={(value) => setCount(Number(value))}>
-            <SelectTrigger aria-label="Quantidade de bolsos"><SelectValue /></SelectTrigger>
+            <SelectTrigger aria-label="Quantidade de bolsos">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-              {[1, 2, 3, 4].map((count) => <SelectItem key={count} value={String(count)}>{count}</SelectItem>)}
+              {[1, 2, 3, 4].map((count) => (
+                <SelectItem key={count} value={String(count)}>
+                  {count}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
         <div className="grid gap-4 lg:grid-cols-2">
           {buckets.map((bucket, index) => (
-            <div key={bucket.id} className="space-y-4 rounded-md border border-border bg-muted/20 p-4">
+            <div
+              key={bucket.id}
+              className="space-y-4 rounded-md border border-border bg-muted/20 p-4"
+            >
               <div className="space-y-2">
                 <Label htmlFor={`bucket-name-${bucket.id}`}>Nome do bolso {index + 1}</Label>
                 <Input

@@ -67,11 +67,7 @@ import {
   type Targets,
 } from "@/lib/targets";
 import { defaultPrefs, normalizePrefs, type DashboardPrefs } from "@/lib/prefs";
-import {
-  buildSalesReport,
-  downloadReportExcel,
-  downloadReportPdf,
-} from "@/lib/report-export";
+import { buildSalesReport, downloadReportExcel, downloadReportPdf } from "@/lib/report-export";
 import { logout } from "@/lib/gate.functions";
 import {
   createWorkbookUpload,
@@ -127,9 +123,8 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const targets = targetsByGroup[currentGroupKey] ?? emptyTargets(buckets);
 
   useEffect(() => {
-    const idle = (
-      window as Window & { requestIdleCallback?: (cb: () => void) => number }
-    ).requestIdleCallback;
+    const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => number })
+      .requestIdleCallback;
     if (idle) idle(() => void preloadWorkbookParser());
     else {
       const t = window.setTimeout(() => void preloadWorkbookParser(), 300);
@@ -232,13 +227,13 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     savePrefs,
   ]);
 
-  const accountOptions = useMemo(
-    () => (rows.length ? uniqueValues(rows, "account") : []),
-    [rows],
-  );
+  const accountOptions = useMemo(() => (rows.length ? uniqueValues(rows, "account") : []), [rows]);
 
   const targetAccountOptions = useMemo(
-    () => (accounts.length ? accountOptions.filter((account) => accounts.includes(account)) : accountOptions),
+    () =>
+      accounts.length
+        ? accountOptions.filter((account) => accounts.includes(account))
+        : accountOptions,
     [accountOptions, accounts],
   );
 
@@ -269,10 +264,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     });
   }, [ready, targetAccountOptions]);
 
-  const scopedRows = useMemo(
-    () => filterRows(rows, accounts, filters),
-    [rows, accounts, filters],
-  );
+  const scopedRows = useMemo(() => filterRows(rows, accounts, filters), [rows, accounts, filters]);
 
   const filterOptions = useMemo(() => {
     const base = filterRows(rows, accounts, emptyFilters());
@@ -365,9 +357,13 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   );
 
   const cumulativeAttainment = useMemo(() => {
-    const totals = new Map(attainment.buckets.map((bucket) => [bucket.id, { actual: 0, target: 0 }]));
+    const totals = new Map(
+      attainment.buckets.map((bucket) => [bucket.id, { actual: 0, target: 0 }]),
+    );
     return Array.from({ length: 12 }, (_, index) => {
-      const point: SeriesPoint = { period: attainment.buckets[0]?.months[index]?.label ?? String(index + 1) };
+      const point: SeriesPoint = {
+        period: attainment.buckets[0]?.months[index]?.label ?? String(index + 1),
+      };
       let visible = false;
       for (const bucket of attainment.buckets) {
         const month = bucket.months[index];
@@ -484,7 +480,11 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           {rows.length ? (
             <>
               <Button variant="outline" onClick={handleExcelExport} disabled={exportingExcel}>
-                {exportingExcel ? <Loader2 className="size-4 animate-spin" /> : <Sheet className="size-4" />}
+                {exportingExcel ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Sheet className="size-4" />
+                )}
                 Exportar Excel
               </Button>
               <Button variant="outline" onClick={handlePdfExport} disabled={exportingPdf}>
@@ -524,7 +524,9 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           {access.kind === "user" ? (
             <>
               <Button variant="outline" asChild>
-                <Link to="/analises"><MessageSquareText className="size-4" /> Análises com IA</Link>
+                <Link to="/analises">
+                  <MessageSquareText className="size-4" /> Análises com IA
+                </Link>
               </Button>
               <ChangePasswordDialog
                 email={access.email}
@@ -792,7 +794,9 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
                             <TableBody>
                               {accountGroup.items.map((customer, index) => (
                                 <TableRow key={`${accountGroup.account}-${customer.name}`}>
-                                  <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                                  <TableCell className="text-muted-foreground">
+                                    {index + 1}
+                                  </TableCell>
                                   <TableCell className="max-w-[380px]">
                                     <Button
                                       variant="link"
@@ -807,7 +811,9 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
                                       {customer.name}
                                     </Button>
                                   </TableCell>
-                                  <TableCell className="text-right">{fmtUSD(customer.revenue)}</TableCell>
+                                  <TableCell className="text-right">
+                                    {fmtUSD(customer.revenue)}
+                                  </TableCell>
                                   <TableCell className="text-right">{customer.quantity}</TableCell>
                                   <TableCell className="text-right">{customer.lines}</TableCell>
                                   <TableCell className="text-right">
