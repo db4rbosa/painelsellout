@@ -3,8 +3,8 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
   BarChart3,
+  Building2,
   FileDown,
-  Filter,
   KeyRound,
   Loader2,
   LogOut,
@@ -37,16 +37,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EvolutionChart } from "@/components/EvolutionChart";
-import { BucketConfig } from "@/components/BucketConfig";
 import { TargetPanel } from "@/components/TargetPanel";
-import { MultiSelectFilter } from "@/components/MultiSelectFilter";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
+import { CustomerDetailsDialog } from "@/components/CustomerDetailsDialog";
+import { SystemSettingsSheet } from "@/components/SystemSettingsSheet";
 import {
   DIMENSIONS,
   FILTER_DIMS,
-  FILTER_LABELS,
   buildSeries,
-  countActiveFilters,
   emptyFilters,
   filterRows,
   fmtUSD,
@@ -69,11 +67,7 @@ import {
   type Targets,
 } from "@/lib/targets";
 import { defaultPrefs, normalizePrefs, type DashboardPrefs } from "@/lib/prefs";
-import {
-  buildSalesReport,
-  downloadReportExcel,
-  downloadReportPdf,
-} from "@/lib/report-export";
+import { buildSalesReport, downloadReportExcel, downloadReportPdf } from "@/lib/report-export";
 import { logout } from "@/lib/gate.functions";
 import {
   createWorkbookUpload,
@@ -120,14 +114,17 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const [targetsByGroup, setTargetsByGroup] = useState<Record<string, Targets>>({});
   const [selectedQuarters, setSelectedQuarters] = useState<number[]>([1, 2, 3, 4]);
   const [accountsByQuarter, setAccountsByQuarter] = useState<QuarterAccounts>({});
+  const [selectedCustomer, setSelectedCustomer] = useState<{
+    account: string;
+    customer: string;
+  } | null>(null);
 
   const currentGroupKey = groupKey(accounts);
   const targets = targetsByGroup[currentGroupKey] ?? emptyTargets(buckets);
 
   useEffect(() => {
-    const idle = (
-      window as Window & { requestIdleCallback?: (cb: () => void) => number }
-    ).requestIdleCallback;
+    const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => number })
+      .requestIdleCallback;
     if (idle) idle(() => void preloadWorkbookParser());
     else {
       const t = window.setTimeout(() => void preloadWorkbookParser(), 300);
@@ -230,13 +227,13 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     savePrefs,
   ]);
 
-  const accountOptions = useMemo(
-    () => (rows.length ? uniqueValues(rows, "account") : []),
-    [rows],
-  );
+  const accountOptions = useMemo(() => (rows.length ? uniqueValues(rows, "account") : []), [rows]);
 
   const targetAccountOptions = useMemo(
-    () => (accounts.length ? accountOptions.filter((account) => accounts.includes(account)) : accountOptions),
+    () =>
+      accounts.length
+        ? accountOptions.filter((account) => accounts.includes(account))
+        : accountOptions,
     [accountOptions, accounts],
   );
 
@@ -267,10 +264,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     });
   }, [ready, targetAccountOptions]);
 
-  const scopedRows = useMemo(
-    () => filterRows(rows, accounts, filters),
-    [rows, accounts, filters],
-  );
+  const scopedRows = useMemo(() => filterRows(rows, accounts, filters), [rows, accounts, filters]);
 
   const filterOptions = useMemo(() => {
     const base = filterRows(rows, accounts, emptyFilters());
@@ -288,7 +282,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   );
 
   const ranking = useMemo(() => {
-    if (groupBy === "none") return [];
+    if (groupBy === "none" || groupBy === "endUser") return [];
     const map = new Map<string, { revenue: number; quantity: number; lines: number }>();
     for (const r of scopedRows) {
       const k = r[groupBy];
@@ -302,6 +296,35 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
       .map(([name, v]) => ({ name, ...v }))
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 25);
+  }, [scopedRows, groupBy]);
+
+  const customerRanking = useMemo(() => {
+    if (groupBy !== "endUser") return [];
+    const accountsMap = new Map<
+      string,
+      Map<string, { revenue: number; quantity: number; lines: number }>
+    >();
+    for (const row of scopedRows) {
+      const customers = accountsMap.get(row.account) ?? new Map();
+      const current = customers.get(row.endUser) ?? { revenue: 0, quantity: 0, lines: 0 };
+      current.revenue += row.revenue;
+      current.quantity += row.quantity;
+      current.lines += 1;
+      customers.set(row.endUser, current);
+      accountsMap.set(row.account, customers);
+    }
+    return [...accountsMap.entries()]
+      .map(([account, customers]) => {
+        const items = [...customers.entries()]
+          .map(([name, values]) => ({ name, ...values }))
+          .sort((a, b) => b.revenue - a.revenue);
+        return {
+          account,
+          revenue: items.reduce((total, item) => total + item.revenue, 0),
+          items,
+        };
+      })
+      .sort((a, b) => b.revenue - a.revenue);
   }, [scopedRows, groupBy]);
 
   const attainment = useMemo(
@@ -334,9 +357,13 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   );
 
   const cumulativeAttainment = useMemo(() => {
-    const totals = new Map(attainment.buckets.map((bucket) => [bucket.id, { actual: 0, target: 0 }]));
+    const totals = new Map(
+      attainment.buckets.map((bucket) => [bucket.id, { actual: 0, target: 0 }]),
+    );
     return Array.from({ length: 12 }, (_, index) => {
-      const point: SeriesPoint = { period: attainment.buckets[0]?.months[index]?.label ?? String(index + 1) };
+      const point: SeriesPoint = {
+        period: attainment.buckets[0]?.months[index]?.label ?? String(index + 1),
+      };
       let visible = false;
       for (const bucket of attainment.buckets) {
         const month = bucket.months[index];
@@ -354,8 +381,6 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
 
   const totalRevenue = useMemo(() => sum(scopedRows), [scopedRows]);
   const totalQty = useMemo(() => sum(scopedRows, "quantity"), [scopedRows]);
-  const activeFilters = countActiveFilters(filters);
-
   const handleFile = async (file?: File | null) => {
     if (!file) return;
     setLoading(true);
@@ -440,10 +465,26 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <SystemSettingsSheet
+            accounts={accounts}
+            accountOptions={accountOptions}
+            filters={filters}
+            filterOptions={filterOptions}
+            buckets={buckets}
+            lineOfBusinessOptions={lineOfBusinessOptions}
+            scopedLineCount={scopedRows.length}
+            onAccountsChange={setAccounts}
+            onFiltersChange={setFilters}
+            onBucketsChange={setBuckets}
+          />
           {rows.length ? (
             <>
               <Button variant="outline" onClick={handleExcelExport} disabled={exportingExcel}>
-                {exportingExcel ? <Loader2 className="size-4 animate-spin" /> : <Sheet className="size-4" />}
+                {exportingExcel ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Sheet className="size-4" />
+                )}
                 Exportar Excel
               </Button>
               <Button variant="outline" onClick={handlePdfExport} disabled={exportingPdf}>
@@ -483,7 +524,9 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           {access.kind === "user" ? (
             <>
               <Button variant="outline" asChild>
-                <Link to="/analises"><MessageSquareText className="size-4" /> Análises com IA</Link>
+                <Link to="/analises">
+                  <MessageSquareText className="size-4" /> Análises com IA
+                </Link>
               </Button>
               <ChangePasswordDialog
                 email={access.email}
@@ -560,54 +603,6 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
               </Card>
             ))}
           </div>
-
-          <Card className="mb-6">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex flex-wrap items-center gap-2 text-base">
-                <Filter className="size-4 text-primary" /> Escopo e filtros
-                <Badge variant="secondary">{scopedRows.length} linhas no escopo</Badge>
-                {accounts.length || activeFilters ? (
-                  <button
-                    type="button"
-                    className="ml-auto text-xs text-muted-foreground underline-offset-2 hover:underline"
-                    onClick={() => {
-                      setAccounts([]);
-                      setFilters(emptyFilters());
-                    }}
-                  >
-                    limpar tudo
-                  </button>
-                ) : null}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <MultiSelectFilter
-                label="Accounts (vendedores)"
-                options={accountOptions}
-                selected={accounts}
-                onChange={setAccounts}
-                placeholder="Todos os accounts"
-                showChips
-              />
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                {FILTER_DIMS.map((k) => (
-                  <MultiSelectFilter
-                    key={k}
-                    label={FILTER_LABELS[k]}
-                    options={filterOptions[k]}
-                    selected={filters[k]}
-                    onChange={(values) => setFilters((f) => ({ ...f, [k]: values }))}
-                  />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <BucketConfig
-            buckets={buckets}
-            lineOfBusinessOptions={lineOfBusinessOptions}
-            onChange={setBuckets}
-          />
 
           <Tabs defaultValue="evolucao">
             <TabsList>
@@ -767,6 +762,75 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
                   </CardContent>
                 </Card>
               ) : null}
+
+              {customerRanking.length ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Ranking por Cliente Final</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-8">
+                    {customerRanking.map((accountGroup) => (
+                      <section key={accountGroup.account}>
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+                          <h3 className="flex items-center gap-2 font-semibold">
+                            <Building2 className="size-4 text-primary" /> {accountGroup.account}
+                          </h3>
+                          <Badge variant="secondary">
+                            {accountGroup.items.length} clientes · {fmtUSD(accountGroup.revenue)}
+                          </Badge>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>#</TableHead>
+                                <TableHead>Cliente Final</TableHead>
+                                <TableHead className="text-right">Receita</TableHead>
+                                <TableHead className="text-right">Qtd.</TableHead>
+                                <TableHead className="text-right">Linhas</TableHead>
+                                <TableHead className="text-right">% do Account</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {accountGroup.items.map((customer, index) => (
+                                <TableRow key={`${accountGroup.account}-${customer.name}`}>
+                                  <TableCell className="text-muted-foreground">
+                                    {index + 1}
+                                  </TableCell>
+                                  <TableCell className="max-w-[380px]">
+                                    <Button
+                                      variant="link"
+                                      className="h-auto max-w-full justify-start whitespace-normal p-0 text-left"
+                                      onClick={() =>
+                                        setSelectedCustomer({
+                                          account: accountGroup.account,
+                                          customer: customer.name,
+                                        })
+                                      }
+                                    >
+                                      {customer.name}
+                                    </Button>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    {fmtUSD(customer.revenue)}
+                                  </TableCell>
+                                  <TableCell className="text-right">{customer.quantity}</TableCell>
+                                  <TableCell className="text-right">{customer.lines}</TableCell>
+                                  <TableCell className="text-right">
+                                    {accountGroup.revenue > 0
+                                      ? `${((customer.revenue / accountGroup.revenue) * 100).toFixed(1)}%`
+                                      : "—"}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </section>
+                    ))}
+                  </CardContent>
+                </Card>
+              ) : null}
             </TabsContent>
 
             <TabsContent value="metas" className="mt-6">
@@ -802,6 +866,13 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           </Tabs>
         </>
       )}
+      <CustomerDetailsDialog
+        selection={selectedCustomer}
+        rows={scopedRows}
+        onOpenChange={(open) => {
+          if (!open) setSelectedCustomer(null);
+        }}
+      />
     </main>
   );
 }

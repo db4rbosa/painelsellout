@@ -26,7 +26,7 @@
 - [x] Generalizar metas, atingimento e gráfico para os bolsos configurados
 - [x] Validar exportação, cálculos, persistência e apresentação dos bolsos
 
-- [ ] Agrupar Ranking por Cliente Final por Account e adicionar detalhamento clicável
-- [ ] Mover filtros e configuração de bolsos para Configurações do Sistema
-- [ ] Permitir LOBs repetidas entre bolsos e manter cálculos por bolso
-- [ ] Validar estados, cálculos e apresentação das novas melhorias
+- [x] Agrupar Ranking por Cliente Final por Account e adicionar detalhamento clicável
+- [x] Mover filtros e configuração de bolsos para Configurações do Sistema
+- [x] Permitir LOBs repetidas entre bolsos e manter cálculos por bolso
+- [x] Validar estados, cálculos e apresentação das novas melhorias

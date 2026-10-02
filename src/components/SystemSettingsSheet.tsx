@@ -13,12 +13,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  FILTER_DIMS,
-  FILTER_LABELS,
-  emptyFilters,
-  type Filters,
-} from "@/lib/sales-data";
+import { FILTER_DIMS, FILTER_LABELS, emptyFilters, type Filters } from "@/lib/sales-data";
 import type { BucketDefinition } from "@/lib/targets";
 
 type Props = {
