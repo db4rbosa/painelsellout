@@ -63,7 +63,7 @@ describe("buildCustomerSkuDetail", () => {
     });
     expect(result.itens.find((item) => item.sku === "SKU não informado")?.categoria).toBe("Serviços");
     expect(result.subtotais.Serviços.receitaUSD).toBe(25);
-    expect(result.subtotais["Total geral"].receitaUSD).toBe(235);
+    expect(result.subtotais["Total geral"].receitaUSD).toBe(251);
   });
 
   it("respects quarter and account selections", () => {
@@ -89,5 +89,22 @@ describe("buildCustomerSkuDetail", () => {
     expect(result.status).toBe("ambiguo");
     if (result.status !== "ambiguo") return;
     expect(result.clientesPossiveis).toEqual(["Amazon Brasil", "Amazon Serviços"]);
+  });
+
+  it("uses an active customer filter and excludes rows removed by other filters", () => {
+    const filters = emptyFilters();
+    filters.endUser = ["Lojas Riachuelo"];
+    filters.disti = ["Distribuidor permitido"];
+    const scopedRows = [
+      row({ disti: "Distribuidor permitido", revenue: 80 }),
+    ];
+    const result = build("Quais equipamentos foram vendidos?", scopedRows, { filters });
+    expect(result.status).toBe("completo");
+    if (result.status !== "completo") return;
+    expect(result.subtotais["Total geral"].receitaUSD).toBe(80);
+    expect(result.escopoAplicado.filtros).toContainEqual({
+      nome: "Distribuidor",
+      valores: ["Distribuidor permitido"],
+    });
   });
 });
