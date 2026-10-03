@@ -72,7 +72,7 @@ export const Route = createFileRoute("/api/chat")({
           });
           if (userMessageError) return new Response("Não foi possível salvar sua pergunta.", { status: 500 });
 
-          const salesContext = await buildUserSalesContext(identity.userId);
+          const salesContext = await buildUserSalesContext(identity.userId, question);
           const history: ModelMessage[] = (priorRows ?? []).slice(-30).flatMap((row): ModelMessage[] =>
             row.role === "user" || row.role === "assistant"
               ? [{ role: row.role, content: row.content }]
@@ -98,7 +98,11 @@ export const Route = createFileRoute("/api/chat")({
               "Use somente o CONTEXTO DE DADOS fornecido. Não invente valores e diga quando algo não estiver disponível.",
               "Vendas incluem Mobility, Printer, Scanner e Software. Serviços são sempre uma categoria separada.",
               "Respeite rigorosamente os accounts, filtros e quarters do contexto atual do usuário.",
-              "Apresente valores em USD e percentuais quando forem úteis. Limite a resposta a cerca de 700 palavras.",
+              "Para perguntas sobre equipamentos ou SKUs de um cliente, use exclusivamente detalhamentoSkusPorCliente.",
+              "Se o detalhamento estiver ambíguo, peça ao usuário que escolha exatamente um dos clientes listados; não some candidatos.",
+              "Se estiver completo, apresente Cliente Final, Account e Quarters; depois liste todos os itens, sem limite, separando Vendas e Serviços em tabelas e finalize com subtotais e total geral.",
+              "Mantenha valores negativos, exiba receita em USD com duas casas decimais e não omita SKU não informado.",
+              "Para outras análises, apresente valores em USD e percentuais quando forem úteis e limite a resposta a cerca de 700 palavras.",
               `CONTEXTO DE DADOS:\n${JSON.stringify(salesContext)}`,
             ].join("\n\n"),
             messages: history,

@@ -2,6 +2,7 @@ import { buildSalesReport } from "./report-export";
 import { matrixToRows, filterRows, FILTER_DIMS, FILTER_LABELS, type DimensionKey, type SalesRow } from "./sales-data";
 import { normalizePrefs, targetsForGroup } from "./prefs";
 import { buildAttainment, groupKey } from "./targets";
+import { buildCustomerSkuDetail } from "./customer-sku-detail";
 
 let workbookCache: { path: string; rows: SalesRow[] } | null = null;
 
@@ -19,7 +20,7 @@ const topGroups = (rows: SalesRow[], key: DimensionKey, limit = 15) => {
     .slice(0, limit);
 };
 
-export async function buildUserSalesContext(userId: string) {
+export async function buildUserSalesContext(userId: string, question = "") {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const [{ data: prefsRow }, { data: workbook }] = await Promise.all([
     supabaseAdmin.from("user_preferences").select("prefs").eq("user_key", userId).maybeSingle(),
@@ -84,6 +85,16 @@ export async function buildUserSalesContext(userId: string) {
     buckets: prefs.buckets,
     attainment,
   });
+  const detalheRows = filterRows(rows, prefs.accounts, prefs.filters);
+  const detalhamentoSkusPorCliente = buildCustomerSkuDetail({
+    question,
+    rows: detalheRows,
+    accounts: report.generalAccounts,
+    selectedQuarters: prefs.selectedQuarters,
+    accountsByQuarter,
+    filters: prefs.filters,
+    filterLabels: FILTER_LABELS,
+  });
 
   return {
     status: "ok" as const,
@@ -97,6 +108,7 @@ export async function buildUserSalesContext(userId: string) {
     resumoPorQuarter: report.quarterLines,
     evolucaoMensal: report.monthlyLines,
     totais: report.totals,
+    detalhamentoSkusPorCliente,
     rankings: {
       linhasDeNegocio: topGroups(scopedRows, "lob"),
       distribuidores: topGroups(scopedRows, "disti"),
