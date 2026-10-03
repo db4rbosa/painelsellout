@@ -30,3 +30,8 @@
 - [x] Mover filtros e configuração de bolsos para Configurações do Sistema
 - [x] Permitir LOBs repetidas entre bolsos e manter cálculos por bolso
 - [x] Validar estados, cálculos e apresentação das novas melhorias
+
+- [ ] Identificar o Cliente Final citado em cada pergunta da IA
+- [ ] Gerar detalhamento completo por SKU e Linha de Negócio no escopo atual
+- [ ] Separar Vendas e Serviços, preservar negativos e sinalizar ambiguidades
+- [ ] Validar cálculos, respostas e ausência de limites artificiais
