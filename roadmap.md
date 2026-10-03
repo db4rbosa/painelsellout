@@ -19,7 +19,7 @@
 - [x] Montar contexto seguro com metas, filtros e planilha atual
 - [x] Integrar respostas progressivas pelo AI Gateway
 - [x] Adicionar lista e páginas dedicadas das análises
-- [ ] Validar isolamento, persistência, respostas e apresentação
+- [x] Validar isolamento, persistência, respostas e apresentação
 
 - [x] Substituir o CSV-resumo por Excel detalhado com uma aba por bolso
 - [x] Criar configuração persistente de 1 a 4 bolsos e Line of Business exclusivos
@@ -34,4 +34,4 @@
 - [x] Identificar o Cliente Final citado em cada pergunta da IA
 - [x] Gerar detalhamento completo por SKU e Linha de Negócio no escopo atual
 - [x] Separar Vendas e Serviços, preservar negativos e sinalizar ambiguidades
-- [ ] Validar cálculos, respostas e ausência de limites artificiais
+- [x] Validar cálculos, respostas e ausência de limites artificiais
