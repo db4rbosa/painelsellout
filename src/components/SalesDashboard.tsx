@@ -85,6 +85,7 @@ export type AccessInfo = {
 };
 
 export function SalesDashboard({ access }: { access: AccessInfo }) {
+  const headerActionClass = "h-11 w-full min-w-0 px-3";
   const router = useRouter();
   const doLogout = useServerFn(logout);
   const loadState = useServerFn(getDashboardState);
@@ -464,8 +465,9 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
             {savingState ? <span className="text-primary">Salvando…</span> : null}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:grid-cols-[repeat(2,11.5rem)] xl:grid-cols-[repeat(3,11.5rem)]">
           <SystemSettingsSheet
+            triggerClassName={headerActionClass}
             accounts={accounts}
             accountOptions={accountOptions}
             filters={filters}
@@ -479,7 +481,12 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           />
           {rows.length ? (
             <>
-              <Button variant="outline" onClick={handleExcelExport} disabled={exportingExcel}>
+              <Button
+                variant="outline"
+                className={headerActionClass}
+                onClick={handleExcelExport}
+                disabled={exportingExcel}
+              >
                 {exportingExcel ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
@@ -487,7 +494,12 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
                 )}
                 Exportar Excel
               </Button>
-              <Button variant="outline" onClick={handlePdfExport} disabled={exportingPdf}>
+              <Button
+                variant="outline"
+                className={headerActionClass}
+                onClick={handlePdfExport}
+                disabled={exportingPdf}
+              >
                 {exportingPdf ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
@@ -498,7 +510,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
             </>
           ) : null}
           <label
-            className="relative cursor-pointer"
+            className="relative block w-full cursor-pointer"
             onPointerEnter={() => void preloadWorkbookParser()}
           >
             <input
@@ -509,13 +521,13 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
               onFocus={() => void preloadWorkbookParser()}
               onChange={(e) => handleFile(e.target.files?.[0])}
             />
-            <span className={buttonVariants()}>
+            <span className={buttonVariants({ className: headerActionClass })}>
               <Upload className="size-4" />
               {rows.length ? "Trocar planilha" : "Importar planilha"}
             </span>
           </label>
           {access.isAdmin ? (
-            <Button variant="outline" asChild>
+            <Button variant="outline" className={headerActionClass} asChild>
               <Link to="/usuarios">
                 <Users className="size-4" /> Usuários
               </Link>
@@ -523,7 +535,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           ) : null}
           {access.kind === "user" ? (
             <>
-              <Button variant="outline" asChild>
+              <Button variant="outline" className={headerActionClass} asChild>
                 <Link to="/analises">
                   <MessageSquareText className="size-4" /> Análises com IA
                 </Link>
@@ -531,14 +543,14 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
               <ChangePasswordDialog
                 email={access.email}
                 trigger={
-                  <Button variant="outline">
+                  <Button variant="outline" className={headerActionClass}>
                     <KeyRound className="size-4" /> Alterar senha
                   </Button>
                 }
               />
             </>
           ) : null}
-          <Button variant="outline" onClick={handleLogout}>
+          <Button variant="outline" className={headerActionClass} onClick={handleLogout}>
             <LogOut className="size-4" /> Sair
           </Button>
         </div>
