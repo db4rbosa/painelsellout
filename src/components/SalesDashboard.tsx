@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
@@ -509,7 +509,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
               onFocus={() => void preloadWorkbookParser()}
               onChange={(e) => handleFile(e.target.files?.[0])}
             />
-            <span className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">
+            <span className={buttonVariants()}>
               <Upload className="size-4" />
               {rows.length ? "Trocar planilha" : "Importar planilha"}
             </span>
