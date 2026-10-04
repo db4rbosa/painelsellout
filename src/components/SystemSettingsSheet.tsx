@@ -17,6 +17,7 @@ import { FILTER_DIMS, FILTER_LABELS, emptyFilters, type Filters } from "@/lib/sa
 import type { BucketDefinition } from "@/lib/targets";
 
 type Props = {
+  triggerClassName?: string;
   accounts: string[];
   accountOptions: string[];
   filters: Filters;
@@ -30,6 +31,7 @@ type Props = {
 };
 
 export function SystemSettingsSheet({
+  triggerClassName,
   accounts,
   accountOptions,
   filters,
@@ -46,7 +48,7 @@ export function SystemSettingsSheet({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" className={triggerClassName}>
           <Settings2 className="size-4" /> Configurações
         </Button>
       </SheetTrigger>
