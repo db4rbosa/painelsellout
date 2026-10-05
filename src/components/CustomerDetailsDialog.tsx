@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Building2, Package, ReceiptText } from "lucide-react";
+import { Layers3, Package, ReceiptText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -19,44 +19,60 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EvolutionChart } from "@/components/EvolutionChart";
-import { buildSeries, fmtUSD, sum, type SalesRow } from "@/lib/sales-data";
+import {
+  DIMENSIONS,
+  buildSeries,
+  fmtUSD,
+  sum,
+  type DimensionKey,
+  type SalesRow,
+} from "@/lib/sales-data";
 
-type CustomerSelection = { account: string; customer: string } | null;
+export type GroupDetailSelection = {
+  dimension: DimensionKey;
+  value: string;
+  account?: string;
+} | null;
 
 type Props = {
-  selection: CustomerSelection;
+  selection: GroupDetailSelection;
   rows: SalesRow[];
   onOpenChange: (open: boolean) => void;
 };
 
 export function CustomerDetailsDialog({ selection, rows, onOpenChange }: Props) {
-  const customerRows = useMemo(
+  const selectedRows = useMemo(
     () =>
       selection
-        ? rows.filter(
-            (row) => row.account === selection.account && row.endUser === selection.customer,
-          )
+        ? rows.filter((row) => {
+            if (row[selection.dimension] !== selection.value) return false;
+            return selection.account === undefined || row.account === selection.account;
+          })
         : [],
     [rows, selection],
   );
   const monthly = useMemo(
-    () => buildSeries(customerRows, "lob", "month", "revenue", 8),
-    [customerRows],
+    () => buildSeries(selectedRows, "lob", "month", "revenue", 8),
+    [selectedRows],
   );
-  const revenue = useMemo(() => sum(customerRows), [customerRows]);
-  const quantity = useMemo(() => sum(customerRows, "quantity"), [customerRows]);
+  const revenue = useMemo(() => sum(selectedRows), [selectedRows]);
+  const quantity = useMemo(() => sum(selectedRows, "quantity"), [selectedRows]);
   const detailRows = useMemo(
-    () => [...customerRows].sort((a, b) => b.revenue - a.revenue),
-    [customerRows],
+    () => [...selectedRows].sort((a, b) => b.revenue - a.revenue),
+    [selectedRows],
   );
+  const dimensionLabel = selection
+    ? DIMENSIONS.find((dimension) => dimension.key === selection.dimension)?.label
+    : undefined;
 
   return (
     <Dialog open={selection !== null} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-6xl overflow-hidden p-0">
         <DialogHeader className="border-b border-border px-6 py-5 pr-12 text-left">
-          <DialogTitle>{selection?.customer ?? "Detalhes do cliente"}</DialogTitle>
+          <DialogTitle>{selection?.value ?? "Detalhes das vendas"}</DialogTitle>
           <DialogDescription className="flex items-center gap-2">
-            <Building2 className="size-4" /> {selection?.account}
+            <Layers3 className="size-4" /> {dimensionLabel ?? "Agrupamento"}
+            {selection?.account ? ` · Account: ${selection.account}` : ""}
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[calc(92vh-88px)]">
@@ -79,7 +95,7 @@ export function CustomerDetailsDialog({ selection, rows, onOpenChange }: Props) 
               <Card>
                 <CardContent className="py-4">
                   <p className="text-xs uppercase text-muted-foreground">Linhas de venda</p>
-                  <p className="mt-1 text-xl font-semibold">{customerRows.length}</p>
+                  <p className="mt-1 text-xl font-semibold">{selectedRows.length}</p>
                 </CardContent>
               </Card>
             </div>
@@ -105,6 +121,8 @@ export function CustomerDetailsDialog({ selection, rows, onOpenChange }: Props) 
                   <TableHeader>
                     <TableRow>
                       <TableHead>Período</TableHead>
+                      <TableHead>Account</TableHead>
+                      <TableHead>Cliente Final</TableHead>
                       <TableHead>LOB</TableHead>
                       <TableHead>SKU</TableHead>
                       <TableHead>Revenda</TableHead>
@@ -119,6 +137,8 @@ export function CustomerDetailsDialog({ selection, rows, onOpenChange }: Props) 
                         <TableCell className="whitespace-nowrap">
                           Q{row.fiscalQuarter} · {row.monthLabel}
                         </TableCell>
+                        <TableCell>{row.account}</TableCell>
+                        <TableCell>{row.endUser}</TableCell>
                         <TableCell>{row.lob}</TableCell>
                         <TableCell>
                           <span className="flex items-center gap-2">
