@@ -35,3 +35,4 @@
 - [x] Gerar detalhamento completo por SKU e Linha de Negócio no escopo atual
 - [x] Separar Vendas e Serviços, preservar negativos e sinalizar ambiguidades
 - [x] Validar cálculos, respostas e ausência de limites artificiais
+- [ ] Adicionar detalhamento clicável para todas as opções de agrupamento do gráfico
