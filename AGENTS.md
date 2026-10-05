@@ -12,3 +12,4 @@
 <!-- LOVABLE:END -->
 
 - Model Line of Business groupings as 1–4 persisted buckets; a LOB may belong to multiple buckets and contributes fully to each, while all targets, reports, and AI context derive from this configuration.
+- Drive sales-detail dialogs from a generic dimension/value selection; only End User also carries Account context to prevent mixing namesakes.

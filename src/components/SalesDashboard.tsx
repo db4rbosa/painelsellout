@@ -39,7 +39,10 @@ import {
 import { EvolutionChart } from "@/components/EvolutionChart";
 import { TargetPanel } from "@/components/TargetPanel";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
-import { CustomerDetailsDialog } from "@/components/CustomerDetailsDialog";
+import {
+  CustomerDetailsDialog,
+  type GroupDetailSelection,
+} from "@/components/CustomerDetailsDialog";
 import { SystemSettingsSheet } from "@/components/SystemSettingsSheet";
 import {
   DIMENSIONS,
@@ -115,10 +118,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const [targetsByGroup, setTargetsByGroup] = useState<Record<string, Targets>>({});
   const [selectedQuarters, setSelectedQuarters] = useState<number[]>([1, 2, 3, 4]);
   const [accountsByQuarter, setAccountsByQuarter] = useState<QuarterAccounts>({});
-  const [selectedCustomer, setSelectedCustomer] = useState<{
-    account: string;
-    customer: string;
-  } | null>(null);
+  const [selectedGroupDetail, setSelectedGroupDetail] = useState<GroupDetailSelection>(null);
 
   const currentGroupKey = groupKey(accounts);
   const targets = targetsByGroup[currentGroupKey] ?? emptyTargets(buckets);
@@ -634,7 +634,13 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
                 <CardContent className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
                   <div className="space-y-2 xl:col-span-2">
                     <Label>Agrupar por</Label>
-                    <Select value={groupBy} onValueChange={(v) => setGroupBy(v as DimensionKey)}>
+                    <Select
+                      value={groupBy}
+                      onValueChange={(value) => {
+                        setSelectedGroupDetail(null);
+                        setGroupBy(value as DimensionKey | "none");
+                      }}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -756,8 +762,16 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
                         {ranking.map((r, i) => (
                           <TableRow key={r.name}>
                             <TableCell className="text-muted-foreground">{i + 1}</TableCell>
-                            <TableCell className="max-w-[380px] truncate font-medium">
-                              {r.name}
+                            <TableCell className="max-w-[380px]">
+                              <Button
+                                variant="link"
+                                className="h-auto max-w-full justify-start whitespace-normal p-0 text-left"
+                                onClick={() =>
+                                  setSelectedGroupDetail({ dimension: groupBy, value: r.name })
+                                }
+                              >
+                                {r.name}
+                              </Button>
                             </TableCell>
                             <TableCell className="text-right">{fmtUSD(r.revenue)}</TableCell>
                             <TableCell className="text-right">{r.quantity}</TableCell>
@@ -814,9 +828,10 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
                                       variant="link"
                                       className="h-auto max-w-full justify-start whitespace-normal p-0 text-left"
                                       onClick={() =>
-                                        setSelectedCustomer({
+                                        setSelectedGroupDetail({
+                                          dimension: "endUser",
                                           account: accountGroup.account,
-                                          customer: customer.name,
+                                          value: customer.name,
                                         })
                                       }
                                     >
@@ -879,10 +894,10 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
         </>
       )}
       <CustomerDetailsDialog
-        selection={selectedCustomer}
+        selection={selectedGroupDetail}
         rows={scopedRows}
         onOpenChange={(open) => {
-          if (!open) setSelectedCustomer(null);
+          if (!open) setSelectedGroupDetail(null);
         }}
       />
     </main>
