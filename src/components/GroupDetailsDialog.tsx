@@ -40,7 +40,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
 };
 
-export function CustomerDetailsDialog({ selection, rows, onOpenChange }: Props) {
+export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
   const selectedRows = useMemo(
     () =>
       selection

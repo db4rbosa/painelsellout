@@ -40,9 +40,9 @@ import { EvolutionChart } from "@/components/EvolutionChart";
 import { TargetPanel } from "@/components/TargetPanel";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import {
-  CustomerDetailsDialog,
+  GroupDetailsDialog,
   type GroupDetailSelection,
-} from "@/components/CustomerDetailsDialog";
+} from "@/components/GroupDetailsDialog";
 import { SystemSettingsSheet } from "@/components/SystemSettingsSheet";
 import {
   DIMENSIONS,
@@ -766,9 +766,10 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
                               <Button
                                 variant="link"
                                 className="h-auto max-w-full justify-start whitespace-normal p-0 text-left"
-                                onClick={() =>
-                                  setSelectedGroupDetail({ dimension: groupBy, value: r.name })
-                                }
+                                onClick={() => {
+                                  if (groupBy === "none") return;
+                                  setSelectedGroupDetail({ dimension: groupBy, value: r.name });
+                                }}
                               >
                                 {r.name}
                               </Button>
@@ -893,7 +894,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           </Tabs>
         </>
       )}
-      <CustomerDetailsDialog
+      <GroupDetailsDialog
         selection={selectedGroupDetail}
         rows={scopedRows}
         onOpenChange={(open) => {
