@@ -40,9 +40,9 @@ import { EvolutionChart } from "@/components/EvolutionChart";
 import { TargetPanel } from "@/components/TargetPanel";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import {
-  CustomerDetailsDialog,
+  GroupDetailsDialog,
   type GroupDetailSelection,
-} from "@/components/CustomerDetailsDialog";
+} from "@/components/GroupDetailsDialog";
 import { SystemSettingsSheet } from "@/components/SystemSettingsSheet";
 import {
   DIMENSIONS,
@@ -894,7 +894,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           </Tabs>
         </>
       )}
-      <CustomerDetailsDialog
+      <GroupDetailsDialog
         selection={selectedGroupDetail}
         rows={scopedRows}
         onOpenChange={(open) => {
