@@ -766,9 +766,10 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
                               <Button
                                 variant="link"
                                 className="h-auto max-w-full justify-start whitespace-normal p-0 text-left"
-                                onClick={() =>
-                                  setSelectedGroupDetail({ dimension: groupBy, value: r.name })
-                                }
+                                onClick={() => {
+                                  if (groupBy === "none") return;
+                                  setSelectedGroupDetail({ dimension: groupBy, value: r.name });
+                                }}
                               >
                                 {r.name}
                               </Button>
