@@ -72,6 +72,7 @@ import {
 import { defaultPrefs, normalizePrefs, type DashboardPrefs } from "@/lib/prefs";
 import { buildSalesReport, downloadReportExcel, downloadReportPdf } from "@/lib/report-export";
 import { logout } from "@/lib/gate.functions";
+import { getAiStatus } from "@/lib/ai-status.functions";
 import {
   createWorkbookUpload,
   getDashboardState,
@@ -119,6 +120,17 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const [selectedQuarters, setSelectedQuarters] = useState<number[]>([1, 2, 3, 4]);
   const [accountsByQuarter, setAccountsByQuarter] = useState<QuarterAccounts>({});
   const [selectedGroupDetail, setSelectedGroupDetail] = useState<GroupDetailSelection>(null);
+  const fetchAiStatus = useServerFn(getAiStatus);
+  const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (access.kind !== "user") return;
+    let cancelled = false;
+    void fetchAiStatus()
+      .then((s) => { if (!cancelled) setAiAvailable(s.available); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [access.kind, fetchAiStatus]);
 
   const currentGroupKey = groupKey(accounts);
   const targets = targetsByGroup[currentGroupKey] ?? emptyTargets(buckets);
@@ -535,11 +547,22 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           ) : null}
           {access.kind === "user" ? (
             <>
-              <Button variant="outline" className={headerActionClass} asChild>
-                <Link to="/analises">
-                  <MessageSquareText className="size-4" /> Análises com IA
-                </Link>
-              </Button>
+              {aiAvailable === false ? (
+                <Button
+                  variant="outline"
+                  className={headerActionClass}
+                  disabled
+                  title="Créditos de IA esgotados. O recurso será reativado automaticamente após a renovação."
+                >
+                  <MessageSquareText className="size-4" /> IA sem créditos
+                </Button>
+              ) : (
+                <Button variant="outline" className={headerActionClass} asChild>
+                  <Link to="/analises">
+                    <MessageSquareText className="size-4" /> Análises com IA
+                  </Link>
+                </Button>
+              )}
               <ChangePasswordDialog
                 email={access.email}
                 trigger={

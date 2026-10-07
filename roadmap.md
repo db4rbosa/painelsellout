@@ -36,3 +36,4 @@
 - [x] Separar Vendas e Serviços, preservar negativos e sinalizar ambiguidades
 - [x] Validar cálculos, respostas e ausência de limites artificiais
 - [x] Adicionar detalhamento clicável para todas as opções de agrupamento do gráfico
+- [x] Desativar Análises com IA sem créditos e reativar automaticamente

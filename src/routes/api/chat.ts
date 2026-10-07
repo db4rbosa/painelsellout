@@ -42,6 +42,10 @@ export const Route = createFileRoute("/api/chat")({
       POST: async ({ request }) => {
         try {
           const identity = await requireApprovedChatUser(request);
+          const { getAiAvailability } = await import("@/lib/ai-status.server");
+          if (!(await getAiAvailability()).available) {
+            return new Response("Análises com IA indisponíveis: créditos de IA esgotados.", { status: 402 });
+          }
           const parsed = RequestBody.safeParse(await request.json());
           if (!parsed.success) return new Response("Solicitação inválida.", { status: 400 });
 
@@ -121,7 +125,13 @@ export const Route = createFileRoute("/api/chat")({
           const response = result.toUIMessageStreamResponse({
             originalMessages: parsed.data.messages,
             sendReasoning: true,
-            onError: safeStreamError,
+            onError: (error) => {
+              const text = error instanceof Error ? error.message : String(error);
+              if (/402|credit|payment required/i.test(text)) {
+                void import("@/lib/ai-status.server").then((m) => m.markAiCreditsExhausted());
+              }
+              return safeStreamError(error);
+            },
             onFinish: async ({ responseMessage, isAborted }) => {
               if (isAborted) return;
               const answer = textOf(responseMessage);
