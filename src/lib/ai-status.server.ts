@@ -35,19 +35,23 @@ async function probeGateway(): Promise<"ok" | "credits" | "unknown"> {
   const key = process.env["LOVABLE_API_KEY"];
   if (!key) return "unknown";
   try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
       method: "POST",
       headers: {
+        "Lovable-API-Key": key,
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
         "X-Lovable-AIG-SDK": "fetch",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [{ role: "user", content: "ok" }],
-        max_tokens: 1,
+        model: "openai/gpt-6-astra",
+        input: "Responda apenas: ok",
+        reasoning: { effort: "low" },
+        store: false,
+        stream: true,
       }),
     });
+    await res.body?.cancel().catch(() => undefined);
     if (res.ok) return "ok";
     if (res.status === 402 || res.status === 403) return "credits";
     return "unknown";
