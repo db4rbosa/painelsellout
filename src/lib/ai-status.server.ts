@@ -1,8 +1,8 @@
 const STATUS_KEY = "__system_ai_gateway__";
 const PROBE_INTERVAL_MS = 60 * 60 * 1000;
 
-type StoredStatus = { paused?: boolean; checkedAt?: string; message?: string };
-export type AiAvailability = { available: boolean; message?: string };
+type StoredStatus = { paused?: boolean; checkedAt?: string; message?: string | undefined };
+export type AiAvailability = { available: boolean; message?: string | undefined };
 
 async function readStatus(): Promise<StoredStatus> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
