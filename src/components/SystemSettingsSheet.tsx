@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/sheet";
 import { FILTER_DIMS, FILTER_LABELS, emptyFilters, type Filters } from "@/lib/sales-data";
 import type { BucketDefinition } from "@/lib/targets";
+import { CompensationSettings } from "@/components/CompensationSettings";
+import type { CompensationSettings as PayoutSettings } from "@/lib/compensation";
 
 type Props = {
   triggerClassName?: string;
@@ -28,6 +30,8 @@ type Props = {
   onAccountsChange: (accounts: string[]) => void;
   onFiltersChange: (filters: Filters) => void;
   onBucketsChange: (buckets: BucketDefinition[]) => void;
+  compensation: PayoutSettings;
+  onCompensationChange: (settings: PayoutSettings) => void;
 };
 
 export function SystemSettingsSheet({
@@ -42,6 +46,8 @@ export function SystemSettingsSheet({
   onAccountsChange,
   onFiltersChange,
   onBucketsChange,
+  compensation,
+  onCompensationChange,
 }: Props) {
   const hasFilters = accounts.length > 0 || FILTER_DIMS.some((key) => filters[key].length > 0);
 
@@ -109,6 +115,8 @@ export function SystemSettingsSheet({
               lineOfBusinessOptions={lineOfBusinessOptions}
               onChange={onBucketsChange}
             />
+            <Separator />
+            <CompensationSettings value={compensation} buckets={buckets} onChange={onCompensationChange} />
           </div>
         </ScrollArea>
       </SheetContent>

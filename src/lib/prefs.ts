@@ -13,6 +13,7 @@ import {
   type QuarterValues,
   type Targets,
 } from "./targets";
+import { defaultCompensation, normalizeCompensation, type CompensationSettings } from "./compensation";
 
 export type DashboardPrefs = {
   accounts: string[];
@@ -27,6 +28,7 @@ export type DashboardPrefs = {
   targetsByGroup: Record<string, Targets>;
   selectedQuarters: number[];
   accountsByQuarter: Record<number, string[]>;
+  compensation: CompensationSettings;
 };
 
 export const defaultPrefs = (): DashboardPrefs => ({
@@ -45,6 +47,7 @@ export const defaultPrefs = (): DashboardPrefs => ({
   targetsByGroup: {},
   selectedQuarters: [1, 2, 3, 4],
   accountsByQuarter: {},
+  compensation: defaultCompensation(),
 });
 
 const strArray = (value: unknown): string[] =>
@@ -138,6 +141,7 @@ export function normalizePrefs(raw: unknown): DashboardPrefs {
     targetsByGroup,
     selectedQuarters: selectedQuarters.length ? selectedQuarters : base.selectedQuarters,
     accountsByQuarter,
+    compensation: normalizeCompensation(record["compensation"]),
   };
 }
 
