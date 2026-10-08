@@ -1,5 +1,9 @@
 # Roadmap
 
+- [ ] Confirmar distribuição da base OPI, combinação dos bolsos e ajuste anual dos valores a receber
+- [ ] Adicionar configurações persistentes de salário QAF e OPI e cálculos trimestrais/anuais
+- [ ] Validar curva de pagamento, persistência e fluxo de valores a receber
+
 - [x] Salvar quarters avaliados e accounts por quarter nas preferências
 - [x] Calcular realizado e metas gerais e de Services por quarter
 - [x] Atualizar a tela de metas com seletores e consolidado
