@@ -44,6 +44,8 @@ import {
   type GroupDetailSelection,
 } from "@/components/GroupDetailsDialog";
 import { SystemSettingsSheet } from "@/components/SystemSettingsSheet";
+import { CompensationPanel } from "@/components/CompensationPanel";
+import { defaultCompensation, type CompensationSettings } from "@/lib/compensation";
 import {
   DIMENSIONS,
   FILTER_DIMS,
@@ -119,6 +121,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const [targetsByGroup, setTargetsByGroup] = useState<Record<string, Targets>>({});
   const [selectedQuarters, setSelectedQuarters] = useState<number[]>([1, 2, 3, 4]);
   const [accountsByQuarter, setAccountsByQuarter] = useState<QuarterAccounts>({});
+  const [compensation, setCompensation] = useState<CompensationSettings>(defaultCompensation);
   const [selectedGroupDetail, setSelectedGroupDetail] = useState<GroupDetailSelection>(null);
   const fetchAiStatus = useServerFn(getAiStatus);
   const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
@@ -159,6 +162,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     setTargetsByGroup(prefs.targetsByGroup);
     setSelectedQuarters(prefs.selectedQuarters);
     setAccountsByQuarter(prefs.accountsByQuarter);
+    setCompensation(prefs.compensation);
   }, []);
 
   // Restaura a última configuração do usuário e a última planilha importada.
@@ -212,6 +216,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
       targetsByGroup,
       selectedQuarters,
       accountsByQuarter,
+      compensation,
     };
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
@@ -238,6 +243,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     selectedQuarters,
     accountsByQuarter,
     savePrefs,
+    compensation,
   ]);
 
   const accountOptions = useMemo(() => (rows.length ? uniqueValues(rows, "account") : []), [rows]);
@@ -343,6 +349,10 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const attainment = useMemo(
     () => buildAttainment(scopedRows, targets, buckets, selectedQuarters, accountsByQuarter),
     [scopedRows, targets, buckets, selectedQuarters, accountsByQuarter],
+  );
+  const annualAttainment = useMemo(
+    () => buildAttainment(scopedRows, targets, buckets, [1, 2, 3, 4], accountsByQuarter),
+    [scopedRows, targets, buckets, accountsByQuarter],
   );
 
   const report = useMemo(
@@ -490,6 +500,8 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
             onAccountsChange={setAccounts}
             onFiltersChange={setFilters}
             onBucketsChange={setBuckets}
+            compensation={compensation}
+            onCompensationChange={setCompensation}
           />
           {rows.length ? (
             <>
@@ -896,6 +908,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
                 onChange={updateTargets}
                 attainment={attainment}
               />
+              <div className="mt-6"><CompensationPanel settings={compensation} buckets={buckets} annualAttainment={annualAttainment} selectedQuarters={selectedQuarters} /></div>
               <Card className="mt-6">
                 <CardHeader>
                   <CardTitle className="text-base">Real vs. meta acumulada</CardTitle>
