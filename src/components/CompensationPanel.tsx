@@ -1,37 +1,35 @@
-import { calculateCompensation, type CompensationSettings } from "@/lib/compensation";
-import { fmtPct } from "@/lib/sales-data";
-import type { AttainmentResult, BucketDefinition } from "@/lib/targets";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { type calculateCompensation } from "@/lib/compensation";
 
-const money = (value: number | null) => value === null ? "—" : new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+export type CompensationResult = ReturnType<typeof calculateCompensation>;
+export const compensationMoney = (value: number | null) => value === null ? "—" : new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 
-export function CompensationPanel({ settings, buckets, annualAttainment, selectedQuarters }: {
-  settings: CompensationSettings; buckets: BucketDefinition[]; annualAttainment: AttainmentResult; selectedQuarters: number[];
+export function CompensationPanel({ result, selectedQuarters }: {
+  result: CompensationResult; selectedQuarters: number[];
 }) {
-  const result = calculateCompensation(settings, buckets, annualAttainment);
-  return <section className="space-y-4 border-t border-border pt-6" aria-labelledby="payout-title">
-    <h2 id="payout-title" className="text-lg font-semibold">Valores a receber</h2>
-    <div className="flex flex-wrap gap-x-8 gap-y-3">
-      <div><p className="text-sm text-muted-foreground">OPI anual · 100%</p><p className="text-2xl font-semibold" data-testid="opi-base">{money(result.annualBase)}</p></div>
-      <div><p className="text-sm text-muted-foreground">Projeção anual com acelerador · Q1–Q4</p><p className="text-2xl font-semibold" data-testid="opi-annual">{money(result.annual.amount)}</p></div>
-    </div>
-    <p className="text-sm text-muted-foreground">LT_PAYCURVE_P2_60_PCT · quarters limitados a 100% de pagamento; anual limitado a 275%. Valores na moeda do salário.</p>
-    {result.issues.length > 0 ? <ul role="status" className="space-y-1 text-sm text-destructive">{result.issues.map((issue) => <li key={issue}>{issue}</li>)}</ul> : null}
-    <div className="overflow-x-auto"><Table>
-      <TableHeader><TableRow><TableHead>Período</TableHead><TableHead>Bolso</TableHead><TableHead className="text-right">Peso</TableHead><TableHead className="text-right">Atingimento</TableHead><TableHead className="text-right">Payout do OPI</TableHead><TableHead className="text-right">A receber</TableHead></TableRow></TableHeader>
-      <TableBody>{selectedQuarters.map((quarter) => {
-        const payout = result.quarters[quarter - 1];
-        if (!payout) return null;
-        return <TableRow key={quarter}><TableCell className="font-medium">Q{quarter}</TableCell><TableCell colSpan={4}>Base OPI: {money(payout.base)}</TableCell><TableCell className="text-right font-semibold" data-testid={`opi-q${quarter}`}>{money(payout.amount)}</TableCell></TableRow>;
-      })}
-      {selectedQuarters.flatMap((quarter) => (result.quarters[quarter - 1]?.details ?? []).map((detail) => <TableRow key={`${quarter}-${detail.id}`}>
-        <TableCell>Q{quarter}</TableCell><TableCell>{detail.name}</TableCell><TableCell className="text-right">{detail.weight}%</TableCell><TableCell className="text-right">{detail.attainment === null ? "—" : fmtPct(detail.attainment)}</TableCell><TableCell className="text-right">{detail.rate === null ? "—" : fmtPct(detail.rate)}</TableCell><TableCell className="text-right">{money(result.issues.length ? null : detail.amount)}</TableCell>
-      </TableRow>))}
-      {result.annual.details.map((detail) => <TableRow key={`annual-${detail.id}`}>
-        <TableCell className="font-medium">Anual Q1–Q4</TableCell><TableCell>{detail.name}</TableCell><TableCell className="text-right">{detail.weight}%</TableCell><TableCell className="text-right">{detail.attainment === null ? "—" : fmtPct(detail.attainment)}</TableCell><TableCell className="text-right">{detail.rate === null ? "—" : fmtPct(detail.rate)}</TableCell><TableCell className="text-right">{money(result.issues.length ? null : detail.amount)}</TableCell>
-      </TableRow>)}
-      </TableBody>
-    </Table></div>
-    <p className="text-sm text-muted-foreground">Projeção anual não somada aos pagamentos trimestrais. Sem meta em um bolso com peso, o valor fica pendente (—).</p>
-  </section>;
+  const data = selectedQuarters.map((quarter) => {
+    const payout = result.quarters[quarter - 1];
+    return { period: `Q${quarter}`, expected: result.issues.length ? null : payout?.base ?? null, calculated: payout?.amount ?? null };
+  });
+  return <Card>
+    <CardHeader className="pb-3"><CardTitle className="text-base">Pagamentos por quarter · esperado vs. a receber</CardTitle></CardHeader>
+    <CardContent className="space-y-4">
+      {result.issues.length > 0 ? <ul role="status" className="space-y-1 text-sm text-destructive">{result.issues.map((issue) => <li key={issue}>{issue}</li>)}</ul> : null}
+      <div className="h-64 w-full sm:h-72" role="img" aria-label="Comparação dos valores esperados a 100% e calculados a receber por quarter">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 12, right: 8, bottom: 0, left: 0 }} barGap={4}>
+            <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="period" stroke="var(--muted-foreground)" tickLine={false} axisLine={false} fontSize={12} />
+            <YAxis stroke="var(--muted-foreground)" tickLine={false} axisLine={false} fontSize={12} width={64} tickFormatter={(value: number) => new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 }).format(value)} />
+            <Tooltip cursor={{ fill: "var(--muted)", fillOpacity: 0.3 }} contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--popover-foreground)", fontSize: 12 }} formatter={(value) => compensationMoney(value === null ? null : Number(value))} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Bar dataKey="expected" name="Esperado · 100%" fill="var(--accent)" radius={[3, 3, 0, 0]} maxBarSize={48} />
+            <Bar dataKey="calculated" name="A receber · calculado" fill="var(--primary)" radius={[3, 3, 0, 0]} maxBarSize={48} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <p className="text-xs text-muted-foreground">Valores na moeda do salário. A receber é uma projeção, não uma confirmação de pagamento. Quarters sem meta ficam pendentes (—).</p>
+    </CardContent>
+  </Card>;
 }
