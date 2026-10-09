@@ -1,5 +1,9 @@
 # Roadmap
 
+- [ ] Integrar pagamentos aos valores dos bolsos e harmonizar a apresentação
+- [ ] Adicionar gráfico de esperado versus calculado por quarter e preservar acelerador anual Q1–Q4
+- [ ] Validar limites, cálculos e apresentação no painel autenticado
+
 - [x] Confirmar distribuição configurável da base OPI, pesos por bolso e marco de 100% da curva
 - [x] Adicionar configurações persistentes de salário QAF e OPI e cálculos trimestrais/anuais
 - [x] Validar curva de pagamento com 30 testes e fluxo real com planilha, recálculo e persistência
