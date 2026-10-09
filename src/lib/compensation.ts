@@ -21,12 +21,12 @@ export function normalizeCompensation(raw: unknown): CompensationSettings {
   const base = defaultCompensation();
   if (!raw || typeof raw !== "object") return base;
   const record = raw as Record<string, unknown>;
-  const shares = Array.isArray(record.quarterShares) ? record.quarterShares : base.quarterShares;
-  const weights = record.bucketWeights && typeof record.bucketWeights === "object"
-    ? record.bucketWeights as Record<string, unknown> : {};
+  const shares = Array.isArray(record["quarterShares"]) ? record["quarterShares"] : base.quarterShares;
+  const weights = record["bucketWeights"] && typeof record["bucketWeights"] === "object"
+    ? record["bucketWeights"] as Record<string, unknown> : {};
   return {
-    salaryAtQaf: nonNegative(record.salaryAtQaf),
-    opiPercent: Math.min(100, nonNegative(record.opiPercent)),
+    salaryAtQaf: nonNegative(record["salaryAtQaf"]),
+    opiPercent: Math.min(100, nonNegative(record["opiPercent"])),
     quarterShares: [0, 1, 2, 3].map((index) => Math.min(100, nonNegative(shares[index]))) as QuarterValues,
     bucketWeights: Object.fromEntries(Object.entries(weights).map(([id, value]) => [id, Math.min(100, nonNegative(value))])),
   };
