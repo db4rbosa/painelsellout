@@ -39,5 +39,5 @@ export const Route = createFileRoute("/")({
 
 function DashboardRoute() {
   const { access } = Route.useLoaderData();
-  return <SalesDashboard access={access} />;
+  return <SalesDashboard key={`${access.kind}:${access.email}`} access={access} />;
 }

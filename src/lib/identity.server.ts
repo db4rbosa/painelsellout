@@ -43,8 +43,12 @@ function bearerToken(): string | null {
 }
 
 export async function resolveIdentity(): Promise<Identity> {
+  const authorization = getRequestHeader("authorization");
+  const token = bearerToken();
+  // A presented credential must never fall back to a different cookie identity.
+  if (authorization && !token) return { kind: "none", reason: "anonymous" };
   const session = await useSession<GateSession>(sessionConfig());
-  if (session.data.unlocked === true) {
+  if (!authorization && session.data.unlocked === true) {
     return {
       kind: "master",
       key: "master",
@@ -55,7 +59,6 @@ export async function resolveIdentity(): Promise<Identity> {
     };
   }
 
-  const token = bearerToken();
   if (!token) return { kind: "none", reason: "anonymous" };
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

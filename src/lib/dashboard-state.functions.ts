@@ -13,13 +13,16 @@ export type WorkbookInfo = {
 export const getDashboardState = createServerFn({ method: "GET" }).handler(async () => {
   const { requireIdentity } = await import("./identity.server");
   const identity = await requireIdentity();
+  const { setResponseHeader } = await import("@tanstack/react-start/server");
+  setResponseHeader("Cache-Control", "private, no-store");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  const { data: prefsRow } = await supabaseAdmin
+  const { data: prefsRow, error: prefsError } = await supabaseAdmin
     .from("user_preferences")
     .select("prefs")
     .eq("user_key", identity.key)
     .maybeSingle();
+  if (prefsError) throw new Error("Não foi possível carregar suas configurações.");
 
   const { data: workbookRow } = await supabaseAdmin
     .from("workbooks")
@@ -52,11 +55,14 @@ export const saveDashboardPrefs = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { requireIdentity } = await import("./identity.server");
     const identity = await requireIdentity();
+    const { normalizePrefs } = await import("./prefs");
+    const { setResponseHeader } = await import("@tanstack/react-start/server");
+    setResponseHeader("Cache-Control", "private, no-store");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("user_preferences")
       .upsert(
-        { user_key: identity.key, prefs: data.prefs as never },
+        { user_key: identity.key, prefs: normalizePrefs(data.prefs) as never },
         { onConflict: "user_key" },
       );
     if (error) throw new Error("Não foi possível salvar suas configurações.");
