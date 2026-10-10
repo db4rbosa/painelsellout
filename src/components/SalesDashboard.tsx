@@ -39,12 +39,8 @@ import {
 import { EvolutionChart } from "@/components/EvolutionChart";
 import { TargetPanel } from "@/components/TargetPanel";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
-import {
-  GroupDetailsDialog,
-  type GroupDetailSelection,
-} from "@/components/GroupDetailsDialog";
+import { GroupDetailsDialog, type GroupDetailSelection } from "@/components/GroupDetailsDialog";
 import { SystemSettingsSheet } from "@/components/SystemSettingsSheet";
-import { CompensationPanel } from "@/components/CompensationPanel";
 import { defaultCompensation, type CompensationSettings } from "@/lib/compensation";
 import {
   DIMENSIONS,
@@ -130,9 +126,13 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     if (access.kind !== "user") return;
     let cancelled = false;
     void fetchAiStatus()
-      .then((s) => { if (!cancelled) setAiAvailable(s.available); })
+      .then((s) => {
+        if (!cancelled) setAiAvailable(s.available);
+      })
       .catch(() => undefined);
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [access.kind, fetchAiStatus]);
 
   const currentGroupKey = groupKey(accounts);
@@ -907,8 +907,9 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
                 targets={targets}
                 onChange={updateTargets}
                 attainment={attainment}
+                compensation={compensation}
+                annualAttainment={annualAttainment}
               />
-              <div className="mt-6"><CompensationPanel settings={compensation} buckets={buckets} annualAttainment={annualAttainment} selectedQuarters={selectedQuarters} /></div>
               <Card className="mt-6">
                 <CardHeader>
                   <CardTitle className="text-base">Real vs. meta acumulada</CardTitle>
