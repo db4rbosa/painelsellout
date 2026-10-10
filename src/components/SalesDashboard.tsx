@@ -39,10 +39,7 @@ import {
 import { EvolutionChart } from "@/components/EvolutionChart";
 import { TargetPanel } from "@/components/TargetPanel";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
-import {
-  GroupDetailsDialog,
-  type GroupDetailSelection,
-} from "@/components/GroupDetailsDialog";
+import { GroupDetailsDialog, type GroupDetailSelection } from "@/components/GroupDetailsDialog";
 import { SystemSettingsSheet } from "@/components/SystemSettingsSheet";
 import { defaultCompensation, type CompensationSettings } from "@/lib/compensation";
 import {
@@ -129,9 +126,13 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     if (access.kind !== "user") return;
     let cancelled = false;
     void fetchAiStatus()
-      .then((s) => { if (!cancelled) setAiAvailable(s.available); })
+      .then((s) => {
+        if (!cancelled) setAiAvailable(s.available);
+      })
       .catch(() => undefined);
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [access.kind, fetchAiStatus]);
 
   const currentGroupKey = groupKey(accounts);
