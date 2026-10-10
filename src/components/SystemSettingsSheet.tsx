@@ -1,4 +1,5 @@
-import { Filter, Settings2 } from "lucide-react";
+import { useState } from "react";
+import { Check, Filter, Loader2, Save, Settings2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BucketConfig } from "@/components/BucketConfig";
@@ -32,7 +33,23 @@ type Props = {
   onBucketsChange: (buckets: BucketDefinition[]) => void;
   compensation: PayoutSettings;
   onCompensationChange: (settings: PayoutSettings) => void;
+  onSave: () => Promise<void>;
 };
+
+function SaveSection({ name, onSave }: { name: string; onSave: () => Promise<void> }) {
+  const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  return <div className="flex flex-wrap items-center justify-end gap-3 pt-3">
+    <span role="status" className={state === "error" ? "text-sm text-destructive" : "text-sm text-muted-foreground"}>
+      {state === "saved" ? "Configurações salvas na sua conta." : state === "error" ? "Não foi possível salvar. Tente novamente." : ""}
+    </span>
+    <Button variant="outline" disabled={state === "saving"} onClick={async () => {
+      setState("saving");
+      try { await onSave(); setState("saved"); } catch { setState("error"); }
+    }} aria-label={`Salvar ${name}`}>
+      {state === "saving" ? <Loader2 className="size-4 animate-spin" /> : state === "saved" ? <Check className="size-4" /> : <Save className="size-4" />} Salvar
+    </Button>
+  </div>;
+}
 
 export function SystemSettingsSheet({
   triggerClassName,
@@ -48,6 +65,7 @@ export function SystemSettingsSheet({
   onBucketsChange,
   compensation,
   onCompensationChange,
+  onSave,
 }: Props) {
   const hasFilters = accounts.length > 0 || FILTER_DIMS.some((key) => filters[key].length > 0);
 
@@ -64,7 +82,7 @@ export function SystemSettingsSheet({
             <Settings2 className="size-5 text-primary" /> Configurações do Sistema
           </SheetTitle>
           <SheetDescription>
-            Accounts, filtros e bolsos são aplicados ao painel em tempo real.
+              Configurações pessoais da sua conta.
           </SheetDescription>
         </SheetHeader>
         <ScrollArea className="h-[calc(100vh-102px)]">
@@ -108,6 +126,7 @@ export function SystemSettingsSheet({
                   />
                 ))}
               </div>
+              <SaveSection name="escopo e filtros" onSave={onSave} />
             </section>
             <Separator />
             <BucketConfig
@@ -115,8 +134,10 @@ export function SystemSettingsSheet({
               lineOfBusinessOptions={lineOfBusinessOptions}
               onChange={onBucketsChange}
             />
+            <SaveSection name="bolsos" onSave={onSave} />
             <Separator />
             <CompensationSettings value={compensation} buckets={buckets} onChange={onCompensationChange} />
+            <SaveSection name="valores a receber" onSave={onSave} />
           </div>
         </ScrollArea>
       </SheetContent>

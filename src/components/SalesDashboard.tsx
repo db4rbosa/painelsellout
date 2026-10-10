@@ -200,6 +200,20 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
 
   // Salva a configuração atual (com atraso, para não gravar a cada clique).
   const saveTimer = useRef<number | null>(null);
+  const prefsSnapshot = useRef<DashboardPrefs>(defaultPrefs());
+  const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const persistPrefs = useCallback((prefs: DashboardPrefs) => {
+    const task = saveQueue.current.catch(() => undefined).then(() => savePrefs({ data: { prefs } }));
+    saveQueue.current = task;
+    return task;
+  }, [savePrefs]);
+  const saveSettingsNow = async () => {
+    if (!ready) throw new Error("Aguarde o carregamento das configurações.");
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    setSavingState(true);
+    try { await persistPrefs(prefsSnapshot.current); }
+    finally { setSavingState(false); }
+  };
   useEffect(() => {
     if (!ready) return undefined;
     const prefs: DashboardPrefs = {
@@ -218,11 +232,12 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
       accountsByQuarter,
       compensation,
     };
+    prefsSnapshot.current = prefs;
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
       setSavingState(true);
-      void savePrefs({ data: { prefs } })
-        .catch(() => undefined)
+      void persistPrefs(prefs)
+        .catch(() => setError("Não foi possível salvar suas configurações. Tente salvar novamente."))
         .finally(() => setSavingState(false));
     }, 700);
     return () => {
@@ -242,7 +257,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     targetsByGroup,
     selectedQuarters,
     accountsByQuarter,
-    savePrefs,
+    persistPrefs,
     compensation,
   ]);
 
@@ -502,6 +517,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
             onBucketsChange={setBuckets}
             compensation={compensation}
             onCompensationChange={setCompensation}
+            onSave={saveSettingsNow}
           />
           {rows.length ? (
             <>

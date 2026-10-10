@@ -1,5 +1,9 @@
 # Roadmap
 
+- [ ] Reorganizar metas e atingimento por trimestre, consolidado e meses
+- [ ] Adicionar salvamento explícito por seção das configurações
+- [ ] Verificar isolamento por usuário e testar salvamento autenticado
+
 - [x] Integrar pagamentos aos valores dos bolsos e harmonizar a apresentação
 - [x] Adicionar gráfico de esperado versus calculado por quarter e preservar acelerador anual Q1–Q4
 - [x] Validar limites, cálculos e apresentação no painel autenticado
