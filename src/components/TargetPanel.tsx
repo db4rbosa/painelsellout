@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MultiSelectFilter } from "@/components/MultiSelectFilter";
 import { NumberInput } from "@/components/NumberInput";
 import { fmtPct, fmtUSD } from "@/lib/sales-data";
@@ -47,7 +48,7 @@ function AttainmentBlock({
   return (
     <div className="rounded-md border border-border bg-muted/30 p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-sm font-medium">{title}</span>
+        <span className="min-w-0 break-words text-sm font-medium">{title}</span>
         <span className={cn("font-display text-xl", toneFor(row.attainment))}>
           {row.attainment === null ? "—" : fmtPct(row.attainment)}
         </span>
@@ -126,7 +127,7 @@ export function TargetPanel({
     <div className="space-y-6">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Quarters avaliados</CardTitle>
+          <CardTitle className="text-base">Período da análise</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -148,7 +149,24 @@ export function TargetPanel({
         </CardContent>
       </Card>
 
-      <div className="grid gap-5 xl:grid-cols-2">
+      <section className="space-y-3" aria-label="Resumo dos quarters selecionados">
+        <h2 className="text-base font-semibold">Resumo · {selectedQuarters.map((q) => `Q${q}`).join(" + ")}</h2>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {attainment.buckets.map((bucket) => (
+            <AttainmentBlock key={bucket.id} title={bucket.name} row={{ label: "Total", ...bucket.total }} />
+          ))}
+        </div>
+      </section>
+
+      <Tabs defaultValue="quarters" className="space-y-5">
+        <TabsList className="grid h-11 w-full grid-cols-3 sm:max-w-lg">
+          <TabsTrigger value="quarters">Por quarter</TabsTrigger>
+          <TabsTrigger value="annual">Ano completo</TabsTrigger>
+          <TabsTrigger value="months">Por mês</TabsTrigger>
+        </TabsList>
+        <TabsContent value="quarters" className="space-y-5">
+      <CompensationPanel result={payments} selectedQuarters={selectedQuarters} />
+      <div className="grid items-start gap-5 xl:grid-cols-2">
         {selectedQuarters.map((quarter) => (
           <Card key={quarter}>
             <CardHeader>
@@ -232,28 +250,9 @@ export function TargetPanel({
         ))}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Total dos quarters selecionados</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          {attainment.buckets.map((bucket) => (
-            <AttainmentBlock
-              key={bucket.id}
-              title={`Total · ${bucket.name}`}
-              row={{ label: "Total", ...bucket.total }}
-            />
-          ))}
-        </CardContent>
-      </Card>
-
-      <CompensationPanel result={payments} selectedQuarters={selectedQuarters} />
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Valores a receber · anual Q1–Q4</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
+        </TabsContent>
+        <TabsContent value="annual" className="space-y-5">
+        <h2 className="text-base font-semibold">Consolidado anual · Q1–Q4</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <p className="text-xs text-muted-foreground">OPI anual · 100%</p>
@@ -293,30 +292,27 @@ export function TargetPanel({
             LT_PAYCURVE_P2_60_PCT · acelerador somente sobre o realizado anual de Q1–Q4, limitado a
             275%. Projeção anual não somada aos pagamentos trimestrais.
           </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Atingimento mês a mês</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        </TabsContent>
+        <TabsContent value="months" className="space-y-4">
+          <h2 className="text-base font-semibold">Atingimento mês a mês</h2>
+          <div className="grid items-start gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 12 }, (_, index) => {
             const rows = attainment.buckets
               .map((bucket) => ({ bucket, row: bucket.months[index] }))
               .filter((item) => item.row && (item.row.actual > 0 || item.row.target > 0));
             if (!rows.length) return null;
             return (
-              <div key={index} className="space-y-3">
+               <section key={index} className="space-y-3 border-t border-border pt-4">
                 <p className="text-sm font-semibold">{rows[0]?.row?.label}</p>
                 {rows.map(({ bucket, row }) =>
                   row ? <AttainmentBlock key={bucket.id} title={bucket.name} row={row} /> : null,
                 )}
-              </div>
+               </section>
             );
           })}
-        </CardContent>
-      </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
