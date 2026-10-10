@@ -26,6 +26,18 @@ describe("LT_PAYCURVE_P2_60_PCT", () => {
 });
 
 describe("compensation settings and amounts", () => {
+  it.each([0, 1, 2])("Q%s never pays above its 100 percent base even at 200 percent attainment", (index) => {
+    const result = calculateCompensation(settings, buckets, attainment(2, 2));
+    expect(result.quarters[index]?.amount).toBe(26000 * (settings.quarterShares[index] ?? 0) / 100);
+  });
+  it("applies the annual accelerator to the full Q1-Q4 actual, not a single overachieving quarter", () => {
+    const rows = [200, 100, 0, 100].map((revenue, index) => ({ account: "Account", lob: "Mobility", fiscalQuarter: index + 1, fiscalMonth: index * 3 + 1, revenue } as SalesRow));
+    const annual = buildAttainment(rows, { annual: 0, byBucket: { m1: [100, 100, 100, 100] } }, [buckets[0]].filter((bucket): bucket is BucketDefinition => bucket !== undefined), [1, 2, 3, 4], { 1: ["Account"], 2: ["Account"], 3: ["Account"], 4: ["Account"] });
+    const result = calculateCompensation({ ...settings, bucketWeights: { m1: 100 } }, [buckets[0]].filter((bucket): bucket is BucketDefinition => bucket !== undefined), annual);
+    expect(result.quarters[0]?.amount).toBe(2600);
+    expect(result.annual.details[0]?.attainment).toBe(1);
+    expect(result.annual.amount).toBe(26000);
+  });
   it("calculates annual OPI using 13 salaries and percentage", () => expect(calculateCompensation(settings, buckets, attainment(1, 1)).annualBase).toBe(26000));
   it("distributes OPI by configurable quarter percentages", () => expect(calculateCompensation(settings, buckets, attainment(1, 1)).quarters.map((q) => q.amount)).toEqual([2600, 5200, 7800, 10400]));
   it("applies curves per bucket before weighting, not to weighted attainment", () => {
