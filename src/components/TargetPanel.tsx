@@ -40,8 +40,8 @@ function AttainmentBlock({
 }: {
   title: string;
   row: AttainmentRow;
-  payout?: CompensationResult["annual"]["details"][number];
-  expected?: number;
+  payout?: CompensationResult["annual"]["details"][number] | undefined;
+  expected?: number | undefined;
   pending?: boolean;
 }) {
   return (
