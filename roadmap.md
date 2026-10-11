@@ -1,5 +1,9 @@
 # Roadmap
 
+- [ ] Ordenar metas por mês, quarter e ano
+- [ ] Revisar e otimizar leitura da planilha e processamento sem alterar regras de negócio
+- [ ] Validar integridade dos dados, regressões e fluxo autenticado
+
 - [x] Reorganizar metas e atingimento por trimestre, consolidado e meses
 - [x] Adicionar salvamento explícito por seção das configurações
 - [x] Verificar isolamento por usuário e testar salvamento autenticado

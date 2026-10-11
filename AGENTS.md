@@ -17,5 +17,5 @@
 - Compose compensation comparisons and per-bucket payouts inside TargetPanel alongside attainment; chart calculated amounts as projections rather than confirmed receipts because no actual payment records are collected.
 - Resolve any presented bearer before considering the legacy master cookie; derive preference ownership exclusively from the verified identity and never from caller input.
 - Serialize dashboard preference writes and reuse that queue for explicit section saves to prevent older autosaves overwriting acknowledged changes.
-- Organize target detail into quarter, full-year, and monthly views with a shared selected-period summary; preserve full-year calculation independent of visible quarters.
+- Organize target detail into monthly, quarter, and full-year views with a shared selected-period summary; preserve full-year calculation independent of visible quarters.
 - Run settings ownership unit tests with vitest.settings.config.ts so server-function handlers are tested without the production RPC compiler transform.

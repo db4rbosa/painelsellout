@@ -164,11 +164,11 @@ export function TargetPanel({
         </div>
       </section>
 
-      <Tabs defaultValue="quarters" className="space-y-5">
+      <Tabs defaultValue="months" className="space-y-5">
         <TabsList className="grid h-11 w-full grid-cols-3 sm:max-w-lg">
+          <TabsTrigger value="months">Por mês</TabsTrigger>
           <TabsTrigger value="quarters">Por quarter</TabsTrigger>
           <TabsTrigger value="annual">Ano completo</TabsTrigger>
-          <TabsTrigger value="months">Por mês</TabsTrigger>
         </TabsList>
         <TabsContent value="quarters" className="space-y-5">
           <CompensationPanel result={payments} selectedQuarters={selectedQuarters} />
@@ -310,7 +310,7 @@ export function TargetPanel({
             {Array.from({ length: 12 }, (_, index) => {
               const rows = attainment.buckets
                 .map((bucket) => ({ bucket, row: bucket.months[index] }))
-                .filter((item) => item.row && (item.row.actual > 0 || item.row.target > 0));
+                .filter((item) => item.row && (item.row.actual !== 0 || item.row.target > 0));
               if (!rows.length) return null;
               return (
                 <section key={index} className="space-y-3 border-t border-border pt-4">
