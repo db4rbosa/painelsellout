@@ -64,7 +64,7 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Não foi possível autorizar</CardTitle>
-          <CardDescription>{error.message}</CardDescription>
+          <CardDescription>{error instanceof Error ? error.message : "Solicitação de autorização inválida."}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button className="w-full" asChild>
