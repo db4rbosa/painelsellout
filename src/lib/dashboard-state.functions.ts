@@ -94,9 +94,7 @@ export const registerWorkbook = createServerFn({ method: "POST" })
     const identity = await requireIdentity();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: previous } = await supabaseAdmin
-      .from("workbooks")
-      .select("id, storage_path");
+    const { data: previous } = await supabaseAdmin.from("workbooks").select("id, storage_path");
 
     const { error } = await supabaseAdmin.from("workbooks").insert({
       file_name: data.fileName,

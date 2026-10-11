@@ -90,9 +90,7 @@ export async function resolveIdentity(): Promise<Identity> {
   };
 }
 
-export async function requireIdentity(): Promise<
-  Extract<Identity, { kind: "master" | "user" }>
-> {
+export async function requireIdentity(): Promise<Extract<Identity, { kind: "master" | "user" }>> {
   const identity = await resolveIdentity();
   if (identity.kind === "none") throw new Error("Acesso não autorizado.");
   return identity;

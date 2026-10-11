@@ -27,7 +27,9 @@ describe("personal settings identity", () => {
     mocks.header = undefined;
     mocks.master = true;
     mocks.getUser.mockResolvedValue({ data: { user: { id: "user-a" } }, error: null });
-    mocks.profile.mockResolvedValue({ data: { name: "A", email: "a@example.test", status: "approved" } });
+    mocks.profile.mockResolvedValue({
+      data: { name: "A", email: "a@example.test", status: "approved" },
+    });
     mocks.rpc.mockResolvedValue({ data: false });
   });
   it("uses the validated user's subject instead of a simultaneous master cookie", async () => {

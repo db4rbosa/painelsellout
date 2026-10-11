@@ -150,10 +150,16 @@ export function TargetPanel({
       </Card>
 
       <section className="space-y-3" aria-label="Resumo dos quarters selecionados">
-        <h2 className="text-base font-semibold">Resumo · {selectedQuarters.map((q) => `Q${q}`).join(" + ")}</h2>
+        <h2 className="text-base font-semibold">
+          Resumo · {selectedQuarters.map((q) => `Q${q}`).join(" + ")}
+        </h2>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {attainment.buckets.map((bucket) => (
-            <AttainmentBlock key={bucket.id} title={bucket.name} row={{ label: "Total", ...bucket.total }} />
+            <AttainmentBlock
+              key={bucket.id}
+              title={bucket.name}
+              row={{ label: "Total", ...bucket.total }}
+            />
           ))}
         </div>
       </section>
@@ -165,94 +171,99 @@ export function TargetPanel({
           <TabsTrigger value="months">Por mês</TabsTrigger>
         </TabsList>
         <TabsContent value="quarters" className="space-y-5">
-      <CompensationPanel result={payments} selectedQuarters={selectedQuarters} />
-      <div className="grid items-start gap-5 xl:grid-cols-2">
-        {selectedQuarters.map((quarter) => (
-          <Card key={quarter}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Layers3 className="size-4 text-primary" /> Q{quarter}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <MultiSelectFilter
-                label={`Accounts do Q${quarter}`}
-                options={accountOptions}
-                selected={accountsByQuarter[quarter] ?? []}
-                onChange={(values) => values.length && onAccountsByQuarterChange(quarter, values)}
-                placeholder="Selecione ao menos um account"
-                showChips
-              />
-              <div className="grid gap-4 sm:grid-cols-2">
-                {buckets.map((bucket) => (
-                  <div key={bucket.id} className="space-y-2">
-                    <Label htmlFor={`target-${bucket.id}-q${quarter}`}>
-                      Meta {bucket.name} Q{quarter} (USD)
-                    </Label>
-                    <NumberInput
-                      id={`target-${bucket.id}-q${quarter}`}
-                      value={targets.byBucket[bucket.id]?.[quarter - 1] ?? 0}
-                      onChange={(value) => {
-                        const quarterValues = [
-                          ...(targets.byBucket[bucket.id] ?? [0, 0, 0, 0]),
-                        ] as [number, number, number, number];
-                        quarterValues[quarter - 1] = value;
-                        onChange({
-                          ...targets,
-                          byBucket: { ...targets.byBucket, [bucket.id]: quarterValues },
-                        });
-                      }}
-                    />
+          <CompensationPanel result={payments} selectedQuarters={selectedQuarters} />
+          <div className="grid items-start gap-5 xl:grid-cols-2">
+            {selectedQuarters.map((quarter) => (
+              <Card key={quarter}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Layers3 className="size-4 text-primary" /> Q{quarter}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <MultiSelectFilter
+                    label={`Accounts do Q${quarter}`}
+                    options={accountOptions}
+                    selected={accountsByQuarter[quarter] ?? []}
+                    onChange={(values) =>
+                      values.length && onAccountsByQuarterChange(quarter, values)
+                    }
+                    placeholder="Selecione ao menos um account"
+                    showChips
+                  />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {buckets.map((bucket) => (
+                      <div key={bucket.id} className="space-y-2">
+                        <Label htmlFor={`target-${bucket.id}-q${quarter}`}>
+                          Meta {bucket.name} Q{quarter} (USD)
+                        </Label>
+                        <NumberInput
+                          id={`target-${bucket.id}-q${quarter}`}
+                          value={targets.byBucket[bucket.id]?.[quarter - 1] ?? 0}
+                          onChange={(value) => {
+                            const quarterValues = [
+                              ...(targets.byBucket[bucket.id] ?? [0, 0, 0, 0]),
+                            ] as [number, number, number, number];
+                            quarterValues[quarter - 1] = value;
+                            onChange({
+                              ...targets,
+                              byBucket: { ...targets.byBucket, [bucket.id]: quarterValues },
+                            });
+                          }}
+                        />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {attainment.buckets.map((bucket) => {
-                  const row = bucket.quarters[quarter - 1];
-                  const period = payments.quarters[quarter - 1];
-                  const payout = period?.details.find((detail) => detail.id === bucket.id);
-                  return row ? (
-                    <AttainmentBlock
-                      key={bucket.id}
-                      title={bucket.name}
-                      row={row}
-                      payout={payout}
-                      expected={period ? (period.base * (payout?.weight ?? 0)) / 100 : undefined}
-                      pending={pending}
-                    />
-                  ) : null;
-                })}
-              </div>
-              <div className="flex flex-wrap items-end justify-between gap-3 border-t border-border pt-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">OPI esperado Q{quarter} · 100%</p>
-                  <p className="mt-1 font-display text-lg tabular-nums">
-                    {compensationMoney(
-                      pending ? null : (payments.quarters[quarter - 1]?.base ?? null),
-                    )}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {attainment.buckets.map((bucket) => {
+                      const row = bucket.quarters[quarter - 1];
+                      const period = payments.quarters[quarter - 1];
+                      const payout = period?.details.find((detail) => detail.id === bucket.id);
+                      return row ? (
+                        <AttainmentBlock
+                          key={bucket.id}
+                          title={bucket.name}
+                          row={row}
+                          payout={payout}
+                          expected={
+                            period ? (period.base * (payout?.weight ?? 0)) / 100 : undefined
+                          }
+                          pending={pending}
+                        />
+                      ) : null;
+                    })}
+                  </div>
+                  <div className="flex flex-wrap items-end justify-between gap-3 border-t border-border pt-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        OPI esperado Q{quarter} · 100%
+                      </p>
+                      <p className="mt-1 font-display text-lg tabular-nums">
+                        {compensationMoney(
+                          pending ? null : (payments.quarters[quarter - 1]?.base ?? null),
+                        )}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Total a receber Q{quarter}</p>
+                      <p
+                        className="mt-1 font-display text-lg font-semibold tabular-nums text-primary"
+                        data-testid={`opi-q${quarter}`}
+                      >
+                        {compensationMoney(payments.quarters[quarter - 1]?.amount ?? null)}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Pagamento trimestral limitado a 100% · sem acelerador.
                   </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Total a receber Q{quarter}</p>
-                  <p
-                    className="mt-1 font-display text-lg font-semibold tabular-nums text-primary"
-                    data-testid={`opi-q${quarter}`}
-                  >
-                    {compensationMoney(payments.quarters[quarter - 1]?.amount ?? null)}
-                  </p>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Pagamento trimestral limitado a 100% · sem acelerador.
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </TabsContent>
         <TabsContent value="annual" className="space-y-5">
-        <h2 className="text-base font-semibold">Consolidado anual · Q1–Q4</h2>
+          <h2 className="text-base font-semibold">Consolidado anual · Q1–Q4</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <p className="text-xs text-muted-foreground">OPI anual · 100%</p>
@@ -296,20 +307,20 @@ export function TargetPanel({
         <TabsContent value="months" className="space-y-4">
           <h2 className="text-base font-semibold">Atingimento mês a mês</h2>
           <div className="grid items-start gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 12 }, (_, index) => {
-            const rows = attainment.buckets
-              .map((bucket) => ({ bucket, row: bucket.months[index] }))
-              .filter((item) => item.row && (item.row.actual > 0 || item.row.target > 0));
-            if (!rows.length) return null;
-            return (
-               <section key={index} className="space-y-3 border-t border-border pt-4">
-                <p className="text-sm font-semibold">{rows[0]?.row?.label}</p>
-                {rows.map(({ bucket, row }) =>
-                  row ? <AttainmentBlock key={bucket.id} title={bucket.name} row={row} /> : null,
-                )}
-               </section>
-            );
-          })}
+            {Array.from({ length: 12 }, (_, index) => {
+              const rows = attainment.buckets
+                .map((bucket) => ({ bucket, row: bucket.months[index] }))
+                .filter((item) => item.row && (item.row.actual > 0 || item.row.target > 0));
+              if (!rows.length) return null;
+              return (
+                <section key={index} className="space-y-3 border-t border-border pt-4">
+                  <p className="text-sm font-semibold">{rows[0]?.row?.label}</p>
+                  {rows.map(({ bucket, row }) =>
+                    row ? <AttainmentBlock key={bucket.id} title={bucket.name} row={row} /> : null,
+                  )}
+                </section>
+              );
+            })}
           </div>
         </TabsContent>
       </Tabs>
