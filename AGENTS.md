@@ -18,3 +18,4 @@
 - Resolve any presented bearer before considering the legacy master cookie; derive preference ownership exclusively from the verified identity and never from caller input.
 - Serialize dashboard preference writes and reuse that queue for explicit section saves to prevent older autosaves overwriting acknowledged changes.
 - Organize target detail into quarter, full-year, and monthly views with a shared selected-period summary; preserve full-year calculation independent of visible quarters.
+- Run settings ownership unit tests with vitest.settings.config.ts so server-function handlers are tested without the production RPC compiler transform.

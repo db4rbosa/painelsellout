@@ -202,17 +202,25 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const saveTimer = useRef<number | null>(null);
   const prefsSnapshot = useRef<DashboardPrefs>(defaultPrefs());
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
-  const persistPrefs = useCallback((prefs: DashboardPrefs) => {
-    const task = saveQueue.current.catch(() => undefined).then(() => savePrefs({ data: { prefs } }));
-    saveQueue.current = task;
-    return task;
-  }, [savePrefs]);
+  const persistPrefs = useCallback(
+    (prefs: DashboardPrefs) => {
+      const task = saveQueue.current
+        .catch(() => undefined)
+        .then(() => savePrefs({ data: { prefs } }));
+      saveQueue.current = task;
+      return task;
+    },
+    [savePrefs],
+  );
   const saveSettingsNow = async () => {
     if (!ready) throw new Error("Aguarde o carregamento das configurações.");
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     setSavingState(true);
-    try { await persistPrefs(prefsSnapshot.current); }
-    finally { setSavingState(false); }
+    try {
+      await persistPrefs(prefsSnapshot.current);
+    } finally {
+      setSavingState(false);
+    }
   };
   useEffect(() => {
     if (!ready) return undefined;
@@ -237,7 +245,9 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     saveTimer.current = window.setTimeout(() => {
       setSavingState(true);
       void persistPrefs(prefs)
-        .catch(() => setError("Não foi possível salvar suas configurações. Tente salvar novamente."))
+        .catch(() =>
+          setError("Não foi possível salvar suas configurações. Tente salvar novamente."),
+        )
         .finally(() => setSavingState(false));
     }, 700);
     return () => {

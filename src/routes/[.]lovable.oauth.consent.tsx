@@ -2,13 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { Link2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/.lovable/oauth/consent")({
@@ -27,9 +21,7 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
   },
   loader: async ({ location }) => {
     const authorizationId = new URLSearchParams(location.search).get("authorization_id") ?? "";
-    const { data, error } = await supabase.auth.oauth.getAuthorizationDetails(
-      authorizationId,
-    );
+    const { data, error } = await supabase.auth.oauth.getAuthorizationDetails(authorizationId);
     if (error) throw error;
     if ("redirect_url" in data) throw redirect({ href: data.redirect_url });
 
@@ -64,7 +56,9 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Não foi possível autorizar</CardTitle>
-          <CardDescription>{error.message}</CardDescription>
+          <CardDescription>
+            {error instanceof Error ? error.message : "Solicitação de autorização inválida."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Button className="w-full" asChild>
@@ -122,7 +116,11 @@ function ConsentPage() {
               descritivos da última planilha. O arquivo não será compartilhado.
             </p>
           </div>
-          {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
           <div className="grid grid-cols-2 gap-3">
             <Button variant="outline" disabled={busy} onClick={() => decide(false)}>
               Negar

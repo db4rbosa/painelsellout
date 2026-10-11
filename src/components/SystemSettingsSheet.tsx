@@ -38,17 +38,43 @@ type Props = {
 
 function SaveSection({ name, onSave }: { name: string; onSave: () => Promise<void> }) {
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  return <div className="flex flex-wrap items-center justify-end gap-3 pt-3">
-    <span role="status" className={state === "error" ? "text-sm text-destructive" : "text-sm text-muted-foreground"}>
-      {state === "saved" ? "Configurações salvas na sua conta." : state === "error" ? "Não foi possível salvar. Tente novamente." : ""}
-    </span>
-    <Button variant="outline" disabled={state === "saving"} onClick={async () => {
-      setState("saving");
-      try { await onSave(); setState("saved"); } catch { setState("error"); }
-    }} aria-label={`Salvar ${name}`}>
-      {state === "saving" ? <Loader2 className="size-4 animate-spin" /> : state === "saved" ? <Check className="size-4" /> : <Save className="size-4" />} Salvar
-    </Button>
-  </div>;
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-3 pt-3">
+      <span
+        role="status"
+        className={state === "error" ? "text-sm text-destructive" : "text-sm text-muted-foreground"}
+      >
+        {state === "saved"
+          ? "Configurações salvas na sua conta."
+          : state === "error"
+            ? "Não foi possível salvar. Tente novamente."
+            : ""}
+      </span>
+      <Button
+        variant="outline"
+        disabled={state === "saving"}
+        onClick={async () => {
+          setState("saving");
+          try {
+            await onSave();
+            setState("saved");
+          } catch {
+            setState("error");
+          }
+        }}
+        aria-label={`Salvar ${name}`}
+      >
+        {state === "saving" ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : state === "saved" ? (
+          <Check className="size-4" />
+        ) : (
+          <Save className="size-4" />
+        )}{" "}
+        Salvar
+      </Button>
+    </div>
+  );
 }
 
 export function SystemSettingsSheet({
@@ -81,9 +107,7 @@ export function SystemSettingsSheet({
           <SheetTitle className="flex items-center gap-2">
             <Settings2 className="size-5 text-primary" /> Configurações do Sistema
           </SheetTitle>
-          <SheetDescription>
-              Configurações pessoais da sua conta.
-          </SheetDescription>
+          <SheetDescription>Configurações pessoais da sua conta.</SheetDescription>
         </SheetHeader>
         <ScrollArea className="h-[calc(100vh-102px)]">
           <div className="space-y-6 p-6">
@@ -136,7 +160,11 @@ export function SystemSettingsSheet({
             />
             <SaveSection name="bolsos" onSave={onSave} />
             <Separator />
-            <CompensationSettings value={compensation} buckets={buckets} onChange={onCompensationChange} />
+            <CompensationSettings
+              value={compensation}
+              buckets={buckets}
+              onChange={onCompensationChange}
+            />
             <SaveSection name="valores a receber" onSave={onSave} />
           </div>
         </ScrollArea>
