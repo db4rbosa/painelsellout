@@ -136,7 +136,10 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   }, [access.kind, fetchAiStatus]);
 
   const currentGroupKey = groupKey(accounts);
-  const targets = targetsByGroup[currentGroupKey] ?? emptyTargets(buckets);
+  const targets = useMemo(
+    () => targetsByGroup[currentGroupKey] ?? emptyTargets(buckets),
+    [targetsByGroup, currentGroupKey, buckets],
+  );
 
   useEffect(() => {
     const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => number })
@@ -184,8 +187,13 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           );
           if (!cancelled && parsed.length) setRows(parsed);
         }
-      } catch {
-        if (!cancelled) setError("Não foi possível carregar a última planilha salva.");
+      } catch (error) {
+        if (!cancelled)
+          setError(
+            error instanceof Error
+              ? error.message
+              : "Não foi possível carregar a última planilha salva.",
+          );
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -419,9 +427,9 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
         if (!month || !total) continue;
         total.actual += month.actual;
         total.target += month.target;
-        point[`${bucket.name} · realizado`] = Math.round(total.actual);
-        point[`${bucket.name} · meta`] = Math.round(total.target);
-        if (month.actual > 0 || month.target > 0) visible = true;
+        point[`${bucket.name} · realizado`] = total.actual;
+        point[`${bucket.name} · meta`] = total.target;
+        if (month.actual !== 0 || month.target > 0) visible = true;
       }
       return visible ? point : null;
     }).filter((point): point is SeriesPoint => point !== null);

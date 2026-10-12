@@ -50,20 +50,33 @@ export const DIMENSIONS = [
   { key: "city", label: "Cidade" },
 ] as const;
 
-
 export type DimensionKey = (typeof DIMENSIONS)[number]["key"];
 
 export type Granularity = "month" | "quarter" | "week";
 
-const num = (v: unknown): number => {
-  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+export const parseSalesNumber = (v: unknown): number => {
+  if (v === null || v === undefined || v === "") return 0;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
   if (typeof v === "string") {
-    const cleaned = v.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
+    let cleaned = v.trim().replace(/\s/g, "");
+    const negative = /^\(.*\)$/.test(cleaned);
+    if (negative) cleaned = cleaned.slice(1, -1);
+    if (cleaned.includes(",") && cleaned.includes(".")) {
+      cleaned =
+        cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")
+          ? cleaned.replace(/\./g, "").replace(",", ".")
+          : cleaned.replace(/,/g, "");
+    } else if (cleaned.includes(",")) {
+      cleaned = /^[-+]?\d{1,3}(,\d{3})+$/.test(cleaned)
+        ? cleaned.replace(/,/g, "")
+        : cleaned.replace(",", ".");
+    } else if (/^[-+]?\d{1,3}(\.\d{3})+$/.test(cleaned)) cleaned = cleaned.replace(/\./g, "");
     const n = Number(cleaned);
-    return Number.isFinite(n) ? n : 0;
+    if (cleaned && Number.isFinite(n)) return negative ? -n : n;
   }
-  return 0;
+  throw new Error("Valor numérico inválido na planilha.");
 };
+const num = parseSalesNumber;
 
 const str = (v: unknown): string => {
   if (v === null || v === undefined) return "—";
@@ -73,51 +86,9 @@ const str = (v: unknown): string => {
 
 type RawRow = Record<string, unknown>;
 
-const pick = (r: RawRow, ...names: string[]): unknown => {
-  for (const n of names) {
-    const v = r[n.toLowerCase()];
-    if (v !== undefined) return v;
-  }
-  return undefined;
-};
-
-const normalizeKeys = (r: RawRow): RawRow => {
-  const out: RawRow = {};
-  for (const [k, v] of Object.entries(r)) out[k.trim().toLowerCase()] = v;
-  return out;
-};
-
 export function normalizeRows(rawRows: RawRow[]): SalesRow[] {
-  return rawRows
-    .map(normalizeKeys)
-    .map((r) => {
-      const month = num(pick(r, "Fiscal Month"));
-      return {
-        fiscalYear: num(pick(r, "Fiscal Year")),
-        fiscalQuarter: num(pick(r, "Fiscal Quarter")) || Math.ceil(month / 3) || 1,
-        fiscalMonth: month,
-        fiscalWeek: num(pick(r, "Fiscal Week")),
-        monthLabel:
-          str(pick(r, "Months")) !== "—"
-            ? str(pick(r, "Months"))
-            : (MONTH_LABELS[month - 1] ?? "—"),
-        lob: str(pick(r, "Line of Business")),
-        disti: str(pick(r, "Disti Std Name")),
-        reseller: str(pick(r, "Reseller")),
-        billTo: str(pick(r, "Bill To HQ - Name", "Bill to Name")),
-        shipTo: str(pick(r, "Ship to Name")),
-        endUser: str(pick(r, "End User")),
-        sku: str(pick(r, "Validated SKU Code")),
-        cbm: str(pick(r, "CBM")),
-        account: str(pick(r, "Account")),
-        segment: str(pick(r, "VENDEDORES")),
-        state: str(pick(r, "Bill To HQ - State")),
-        city: str(pick(r, "Bill To HQ - City")),
-        revenue: num(pick(r, "Extended Net Price USD")),
-        quantity: num(pick(r, "Quantity")),
-      } satisfies SalesRow;
-    })
-    .filter((r) => r.fiscalMonth > 0);
+  const headers = [...new Set(rawRows.flatMap((row) => Object.keys(row)))];
+  return matrixToRows([headers, ...rawRows.map((row) => headers.map((header) => row[header]))]);
 }
 
 let fastPromise: Promise<typeof import("./xlsx-fast")> | null = null;
@@ -169,17 +140,39 @@ export function matrixToRows(matrix: unknown[][]): SalesRow[] {
   const cRevenue = col("Extended Net Price USD");
   const cQty = col("Quantity");
 
+  const required = [
+    ["Fiscal Year", cYear],
+    ["Fiscal Month", cMonth],
+    ["Line of Business", cLob],
+    ["Account", cAccount],
+    ["Extended Net Price USD", cRevenue],
+    ["Quantity", cQty],
+  ] as const;
+  const missing = required.filter(([, index]) => index < 0).map(([name]) => name);
+  if (missing.length) throw new Error(`Colunas obrigatórias ausentes: ${missing.join(", ")}.`);
   const out: SalesRow[] = [];
+  const years = new Set<number>();
   for (let i = 1; i < matrix.length; i++) {
     const r = matrix[i];
     if (!r) continue;
     const at = (c: number): unknown => (c >= 0 ? r[c] : undefined);
     const month = num(at(cMonth));
-    if (month <= 0) continue;
+    // Summary/footer rows have no fiscal month and are not sales transactions.
+    if (month === 0) continue;
+    if (!r.some((value) => value !== null && value !== undefined && value !== "")) continue;
+    if (!Number.isInteger(month) || month < 1 || month > 12)
+      throw new Error(`Mês fiscal inválido na linha ${i + 1}.`);
+    const year = num(at(cYear));
+    if (!Number.isInteger(year) || year <= 0)
+      throw new Error(`Ano fiscal inválido na linha ${i + 1}.`);
+    years.add(year);
+    const quarter = num(at(cQuarter)) || Math.ceil(month / 3);
+    if (!Number.isInteger(quarter) || quarter < 1 || quarter > 4)
+      throw new Error(`Quarter fiscal inválido na linha ${i + 1}.`);
     const label = str(at(cMonths));
     out.push({
-      fiscalYear: num(at(cYear)),
-      fiscalQuarter: num(at(cQuarter)) || Math.ceil(month / 3) || 1,
+      fiscalYear: year,
+      fiscalQuarter: quarter,
       fiscalMonth: month,
       fiscalWeek: num(at(cWeek)),
       monthLabel: label !== "—" ? label : (MONTH_LABELS[month - 1] ?? "—"),
@@ -199,34 +192,69 @@ export function matrixToRows(matrix: unknown[][]): SalesRow[] {
       quantity: num(at(cQty)),
     });
   }
+  if (years.size > 1)
+    throw new Error(
+      "A planilha contém mais de um ano fiscal. Importe um ano por vez para não misturar as metas anuais.",
+    );
   return out;
 }
 
 async function parseWithXlsx(buf: ArrayBuffer): Promise<SalesRow[]> {
   const XLSX = await loadXlsx();
-  const wb = XLSX.read(buf, { dense: true });
-  const sheet = wb.Sheets[wb.SheetNames[0]!]!;
+  const wb = XLSX.read(buf, { dense: true, sheets: 0 });
+  const name = wb.SheetNames[0];
+  const sheet = name ? wb.Sheets[name] : undefined;
+  if (!sheet) throw new Error("A planilha não contém abas.");
   return matrixToRows(XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null }));
 }
 
 export async function parseWorkbook(file: File): Promise<SalesRow[]> {
   const buf = await file.arrayBuffer();
-  const isXlsx = /\.xlsx$/i.test(file.name);
+  if (typeof Worker === "undefined") return parseWorkbookBuffer(buf, file.name);
+  return new Promise<SalesRow[]>((resolve, reject) => {
+    const worker = new Worker(new URL("./workbook.worker.ts", import.meta.url), { type: "module" });
+    const timeout = setTimeout(() => {
+      worker.terminate();
+      reject(
+        new Error(
+          "A leitura excedeu o tempo disponível. Verifique o tamanho e o conteúdo da planilha.",
+        ),
+      );
+    }, 120_000);
+    const finish = () => {
+      clearTimeout(timeout);
+      worker.terminate();
+    };
+    worker.onmessage = (event: MessageEvent<{ rows?: SalesRow[]; error?: string }>) => {
+      finish();
+      if (event.data.error || !event.data.rows)
+        reject(new Error(event.data.error ?? "Resposta inválida do leitor."));
+      else resolve(event.data.rows);
+    };
+    worker.onerror = () => {
+      finish();
+      reject(new Error("Não foi possível iniciar a leitura da planilha. Tente novamente."));
+    };
+    worker.postMessage({ buffer: buf, fileName: file.name }, [buf]);
+  });
+}
+
+export async function parseWorkbookBuffer(buf: ArrayBuffer, fileName: string): Promise<SalesRow[]> {
+  const isXlsx = /\.xlsx$/i.test(fileName);
 
   if (isXlsx) {
+    let matrix: unknown[][] | undefined;
     try {
       const { readSheetMatrix } = await (fastPromise ??= import("./xlsx-fast"));
-      const rows = matrixToRows(readSheetMatrix(new Uint8Array(buf)));
-      if (rows.length) return rows;
+      matrix = readSheetMatrix(new Uint8Array(buf));
     } catch {
       // cai para o leitor completo abaixo
     }
+    if (matrix?.length) return matrixToRows(matrix);
   }
 
   return parseWithXlsx(buf);
 }
-
-
 
 export const uniqueValues = (rows: SalesRow[], key: DimensionKey): string[] =>
   Array.from(new Set(rows.map((r) => r[key]))).sort((a, b) => a.localeCompare(b));
@@ -241,7 +269,6 @@ export const FILTER_LABELS: Record<FilterKey, string> = {
   endUser: "Cliente Final",
   disti: "Distribuidor",
 };
-
 
 export type Filters = Record<FilterKey, string[]>;
 
@@ -296,12 +323,14 @@ export function buildSeries(
     const v = row[metric];
     totalsByGroup.set(group, (totalsByGroup.get(group) ?? 0) + v);
     if (!byPeriod.has(p)) byPeriod.set(p, new Map());
-    const m = byPeriod.get(p)!;
+    const m = byPeriod.get(p);
+    if (!m) continue;
     m.set(group, (m.get(group) ?? 0) + v);
   }
 
   const ranked = [...totalsByGroup.entries()].sort((a, b) => b[1] - a[1]);
   const keys = ranked.slice(0, topN).map(([k]) => k);
+  const keySet = new Set(keys);
   const hasOthers = ranked.length > keys.length;
 
   const data: SeriesPoint[] = [...byPeriod.entries()]
@@ -310,11 +339,11 @@ export function buildSeries(
       const point: SeriesPoint = { period };
       let others = 0;
       for (const [group, v] of m) {
-        if (keys.includes(group)) point[group] = Math.round(v);
+        if (keySet.has(group)) point[group] = v;
         else others += v;
       }
       for (const k of keys) if (point[k] === undefined) point[k] = 0;
-      if (hasOthers) point["Outros"] = Math.round(others);
+      if (hasOthers) point["Outros"] = others;
       return point;
     });
 
@@ -324,11 +353,11 @@ export function buildSeries(
 export const sum = (rows: SalesRow[], metric: "revenue" | "quantity" = "revenue") =>
   rows.reduce((acc, r) => acc + r[metric], 0);
 
-export const fmtUSD = (v: number) =>
-  new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(v);
+const usdFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+export const fmtUSD = (v: number) => usdFormatter.format(v);
 
 export const fmtPct = (v: number) => `${(v * 100).toFixed(1)}%`;
