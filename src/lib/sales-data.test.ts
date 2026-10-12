@@ -54,6 +54,8 @@ describe("sales import integrity", () => {
     expect(() => matrixToRows([headers, [2026, 13, 1, "Account", "Service", 10, 1]])).toThrow(
       "Mês fiscal",
     ));
+  it("ignores summary rows without a fiscal month", () =>
+    expect(matrixToRows([...matrix(), [null, null, null, "Total", null, 100, 1]])).toHaveLength(1));
   it("preserves the explicit fiscal quarter rather than assuming calendar quarters", () =>
     expect(matrixToRows([headers, [2026, 1, 2, "Account", "Service", 10, 1]])[0]?.fiscalQuarter).toBe(2));
   it("rejects quarters outside the four-quarter range", () =>

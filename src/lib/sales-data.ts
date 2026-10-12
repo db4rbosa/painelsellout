@@ -157,6 +157,8 @@ export function matrixToRows(matrix: unknown[][]): SalesRow[] {
     if (!r) continue;
     const at = (c: number): unknown => (c >= 0 ? r[c] : undefined);
     const month = num(at(cMonth));
+    // Summary/footer rows have no fiscal month and are not sales transactions.
+    if (month === 0) continue;
     if (!r.some((value) => value !== null && value !== undefined && value !== "")) continue;
     if (!Number.isInteger(month) || month < 1 || month > 12)
       throw new Error(`Mês fiscal inválido na linha ${i + 1}.`);
