@@ -1,8 +1,8 @@
 # Roadmap
 
-- [ ] Ordenar metas por mês, quarter e ano
-- [ ] Revisar e otimizar leitura da planilha e processamento sem alterar regras de negócio
-- [ ] Validar integridade dos dados, regressões e fluxo autenticado
+- [x] Ordenar metas por mês, quarter e ano
+- [x] Revisar e otimizar leitura da planilha e processamento sem alterar regras de negócio
+- [ ] Validar navegação de metas com a planilha atual salva: bloqueado por meses fiscais 13–20 a partir da linha 24996; leitura da planilha original, responsividade e 65 testes já validados
 
 - [x] Reorganizar metas e atingimento por trimestre, consolidado e meses
 - [x] Adicionar salvamento explícito por seção das configurações
