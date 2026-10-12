@@ -188,7 +188,12 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           if (!cancelled && parsed.length) setRows(parsed);
         }
       } catch (error) {
-        if (!cancelled) setError(error instanceof Error ? error.message : "Não foi possível carregar a última planilha salva.");
+        if (!cancelled)
+          setError(
+            error instanceof Error
+              ? error.message
+              : "Não foi possível carregar a última planilha salva.",
+          );
       } finally {
         if (!cancelled) {
           setLoading(false);
