@@ -165,8 +165,8 @@ export function matrixToRows(matrix: unknown[][]): SalesRow[] {
       throw new Error(`Ano fiscal inválido na linha ${i + 1}.`);
     years.add(year);
     const quarter = num(at(cQuarter)) || Math.ceil(month / 3);
-    if (quarter !== Math.ceil(month / 3))
-      throw new Error(`Quarter incompatível com o mês na linha ${i + 1}.`);
+    if (!Number.isInteger(quarter) || quarter < 1 || quarter > 4)
+      throw new Error(`Quarter fiscal inválido na linha ${i + 1}.`);
     const label = str(at(cMonths));
     out.push({
       fiscalYear: year,

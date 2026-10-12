@@ -54,10 +54,10 @@ describe("sales import integrity", () => {
     expect(() => matrixToRows([headers, [2026, 13, 1, "Account", "Service", 10, 1]])).toThrow(
       "Mês fiscal",
     ));
-  it("rejects quarters inconsistent with months", () =>
-    expect(() => matrixToRows([headers, [2026, 1, 2, "Account", "Service", 10, 1]])).toThrow(
-      "Quarter incompatível",
-    ));
+  it("preserves the explicit fiscal quarter rather than assuming calendar quarters", () =>
+    expect(matrixToRows([headers, [2026, 1, 2, "Account", "Service", 10, 1]])[0]?.fiscalQuarter).toBe(2));
+  it("rejects quarters outside the four-quarter range", () =>
+    expect(() => matrixToRows([headers, [2026, 1, 5, "Account", "Service", 10, 1]])).toThrow("Quarter fiscal"));
   it("does not combine multiple fiscal years into one annual target", () =>
     expect(() => matrixToRows([...matrix(), [2025, 1, 1, "Account", "Service", 10, 1]])).toThrow(
       "mais de um ano",
