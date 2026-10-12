@@ -21,3 +21,4 @@
 - Run settings ownership unit tests with vitest.settings.config.ts so server-function handlers are tested without the production RPC compiler transform.
 - Use the same validated workbook parser in the browser and AI context; follow workbook relationship order and scan all rows so blank formatting cannot silently truncate sales.
 - Index normalized Line of Business memberships before attainment aggregation to avoid repeated bucket scans while preserving full contribution to overlapping buckets.
+- Parse browser imports in a dedicated disposable module worker with a transferable buffer; retain the same pure buffer parser on the server to keep the interface responsive without divergent validation.

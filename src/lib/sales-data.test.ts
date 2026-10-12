@@ -23,7 +23,7 @@ describe("sales import integrity", () => {
   it("does not combine multiple fiscal years into one annual target", () => expect(() => matrixToRows([...matrix(), [2025, 1, 1, "Account", "Service", 10, 1]])).toThrow("mais de um ano"));
   it("preserves negative sales and precision in chart series", () => {
     const rows = matrixToRows(matrix());
-    expect(buildSeries(rows, "lob", "month", "revenue").data[0]?.Service).toBe(-1234.56);
+    expect(buildSeries(rows, "lob", "month", "revenue").data[0]?.["Service"]).toBe(-1234.56);
   });
   it("reads the first sheet in workbook order", () => {
     const sheet = '<worksheet><sheetData><row r="1">' + cell("A1", "Correct") + '</row></sheetData></worksheet>';

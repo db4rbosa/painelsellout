@@ -194,20 +194,36 @@ async function parseWithXlsx(buf: ArrayBuffer): Promise<SalesRow[]> {
 
 export async function parseWorkbook(file: File): Promise<SalesRow[]> {
   const buf = await file.arrayBuffer();
-  return parseWorkbookBuffer(buf, file.name);
+  if (typeof Worker === "undefined") return parseWorkbookBuffer(buf, file.name);
+  return new Promise<SalesRow[]>((resolve, reject) => {
+    const worker = new Worker(new URL("./workbook.worker.ts", import.meta.url), { type: "module" });
+    const timeout = setTimeout(() => {
+      worker.terminate();
+      reject(new Error("A leitura excedeu o tempo disponível. Verifique o tamanho e o conteúdo da planilha."));
+    }, 120_000);
+    const finish = () => { clearTimeout(timeout); worker.terminate(); };
+    worker.onmessage = (event: MessageEvent<{ rows?: SalesRow[]; error?: string }>) => {
+      finish();
+      if (event.data.error || !event.data.rows) reject(new Error(event.data.error ?? "Resposta inválida do leitor."));
+      else resolve(event.data.rows);
+    };
+    worker.onerror = () => { finish(); reject(new Error("Não foi possível iniciar a leitura da planilha. Tente novamente.")); };
+    worker.postMessage({ buffer: buf, fileName: file.name }, [buf]);
+  });
 }
 
 export async function parseWorkbookBuffer(buf: ArrayBuffer, fileName: string): Promise<SalesRow[]> {
   const isXlsx = /\.xlsx$/i.test(fileName);
 
   if (isXlsx) {
+    let matrix: unknown[][] | undefined;
     try {
       const { readSheetMatrix } = await (fastPromise ??= import("./xlsx-fast"));
-      const rows = matrixToRows(readSheetMatrix(new Uint8Array(buf)));
-      if (rows.length) return rows;
+      matrix = readSheetMatrix(new Uint8Array(buf));
     } catch {
       // cai para o leitor completo abaixo
     }
+    if (matrix?.length) return matrixToRows(matrix);
   }
 
   return parseWithXlsx(buf);
