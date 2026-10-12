@@ -45,6 +45,18 @@ export const bucketsForRow = (row: SalesRow, buckets: BucketDefinition[]) => {
   );
 };
 
+export function indexBuckets(buckets: BucketDefinition[]) {
+  const index = new Map<string, BucketDefinition[]>();
+  for (const bucket of buckets) {
+    for (const lob of new Set(bucket.lineOfBusiness.map(normalizeLob))) {
+      const matching = index.get(lob) ?? [];
+      matching.push(bucket);
+      index.set(lob, matching);
+    }
+  }
+  return index;
+}
+
 export const bucketForRow = (row: SalesRow, buckets: BucketDefinition[]) =>
   bucketsForRow(row, buckets)[0];
 
@@ -100,13 +112,14 @@ export function buildAttainment(
   );
 
   const actuals = new Map(buckets.map((bucket) => [bucket.id, new Array(12).fill(0) as number[]]));
+  const bucketIndex = indexBuckets(buckets);
   for (const row of rows) {
     if (!selected.has(row.fiscalQuarter)) continue;
     const quarterAccounts = accountSets.get(row.fiscalQuarter);
     if (!quarterAccounts?.size || !quarterAccounts.has(row.account)) continue;
     const monthIndex = row.fiscalMonth - 1;
     if (monthIndex < 0 || monthIndex >= 12) continue;
-    for (const bucket of bucketsForRow(row, buckets)) {
+    for (const bucket of bucketIndex.get(normalizeLob(row.lob)) ?? []) {
       const values = actuals.get(bucket.id);
       if (values) values[monthIndex] = (values[monthIndex] ?? 0) + row.revenue;
     }

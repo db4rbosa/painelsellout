@@ -1,5 +1,5 @@
 import { buildSalesReport } from "./report-export";
-import { matrixToRows, filterRows, FILTER_DIMS, FILTER_LABELS, type DimensionKey, type SalesRow } from "./sales-data";
+import { parseWorkbookBuffer, filterRows, FILTER_DIMS, FILTER_LABELS, type DimensionKey, type SalesRow } from "./sales-data";
 import { normalizePrefs, targetsForGroup } from "./prefs";
 import { buildAttainment, groupKey } from "./targets";
 import { buildCustomerSkuDetail } from "./customer-sku-detail";
@@ -22,7 +22,7 @@ const topGroups = (rows: SalesRow[], key: DimensionKey, limit = 15) => {
 
 export async function buildUserSalesContext(userId: string, question = "") {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const [{ data: prefsRow }, { data: workbook }] = await Promise.all([
+  const [{ data: prefsRow, error: prefsError }, { data: workbook, error: workbookError }] = await Promise.all([
     supabaseAdmin.from("user_preferences").select("prefs").eq("user_key", userId).maybeSingle(),
     supabaseAdmin
       .from("workbooks")
@@ -31,6 +31,7 @@ export async function buildUserSalesContext(userId: string, question = "") {
       .limit(1)
       .maybeSingle(),
   ]);
+  if (prefsError || workbookError) throw new Error("Não foi possível carregar suas configurações e planilha.");
   if (!workbook) return { status: "sem_planilha" as const };
 
   let rows: SalesRow[];
@@ -41,19 +42,7 @@ export async function buildUserSalesContext(userId: string, question = "") {
       .from("sales-workbooks")
       .download(workbook.storage_path);
     if (error || !data) throw new Error("Não foi possível ler a planilha atual.");
-    const bytes = new Uint8Array(await data.arrayBuffer());
-    if (/\.xlsx$/i.test(workbook.file_name)) {
-      const { readSheetMatrix } = await import("./xlsx-fast");
-      rows = matrixToRows(readSheetMatrix(bytes));
-    } else {
-      const XLSX = await import("xlsx");
-      const parsed = XLSX.read(bytes, { dense: true });
-      const sheetName = parsed.SheetNames[0];
-      const sheet = sheetName ? parsed.Sheets[sheetName] : undefined;
-      rows = sheet
-        ? matrixToRows(XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null }))
-        : [];
-    }
+    rows = await parseWorkbookBuffer(await data.arrayBuffer(), workbook.file_name);
     workbookCache = { path: workbook.storage_path, rows };
   }
 
@@ -85,10 +74,9 @@ export async function buildUserSalesContext(userId: string, question = "") {
     buckets: prefs.buckets,
     attainment,
   });
-  const detalheRows = filterRows(rows, prefs.accounts, prefs.filters);
   const detalhamentoSkusPorCliente = buildCustomerSkuDetail({
     question,
-    rows: detalheRows,
+    rows: scopedRows,
     accounts: report.generalAccounts,
     selectedQuarters: prefs.selectedQuarters,
     accountsByQuarter,
