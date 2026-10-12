@@ -1,5 +1,12 @@
 import { buildSalesReport } from "./report-export";
-import { parseWorkbookBuffer, filterRows, FILTER_DIMS, FILTER_LABELS, type DimensionKey, type SalesRow } from "./sales-data";
+import {
+  parseWorkbookBuffer,
+  filterRows,
+  FILTER_DIMS,
+  FILTER_LABELS,
+  type DimensionKey,
+  type SalesRow,
+} from "./sales-data";
 import { normalizePrefs, targetsForGroup } from "./prefs";
 import { buildAttainment, groupKey } from "./targets";
 import { buildCustomerSkuDetail } from "./customer-sku-detail";
@@ -22,16 +29,18 @@ const topGroups = (rows: SalesRow[], key: DimensionKey, limit = 15) => {
 
 export async function buildUserSalesContext(userId: string, question = "") {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const [{ data: prefsRow, error: prefsError }, { data: workbook, error: workbookError }] = await Promise.all([
-    supabaseAdmin.from("user_preferences").select("prefs").eq("user_key", userId).maybeSingle(),
-    supabaseAdmin
-      .from("workbooks")
-      .select("file_name, storage_path, created_at")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
-  if (prefsError || workbookError) throw new Error("Não foi possível carregar suas configurações e planilha.");
+  const [{ data: prefsRow, error: prefsError }, { data: workbook, error: workbookError }] =
+    await Promise.all([
+      supabaseAdmin.from("user_preferences").select("prefs").eq("user_key", userId).maybeSingle(),
+      supabaseAdmin
+        .from("workbooks")
+        .select("file_name, storage_path, created_at")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+  if (prefsError || workbookError)
+    throw new Error("Não foi possível carregar suas configurações e planilha.");
   if (!workbook) return { status: "sem_planilha" as const };
 
   let rows: SalesRow[];
@@ -48,7 +57,9 @@ export async function buildUserSalesContext(userId: string, question = "") {
 
   const prefs = normalizePrefs(prefsRow?.prefs);
   const scopedRows = filterRows(rows, prefs.accounts, prefs.filters);
-  const allAccounts = [...new Set(rows.map((row) => row.account))].sort((a, b) => a.localeCompare(b));
+  const allAccounts = [...new Set(rows.map((row) => row.account))].sort((a, b) =>
+    a.localeCompare(b),
+  );
   const targetAccounts = prefs.accounts.length ? prefs.accounts : allAccounts;
   const accountsByQuarter = Object.fromEntries(
     [1, 2, 3, 4].map((quarter) => {
@@ -86,12 +97,19 @@ export async function buildUserSalesContext(userId: string, question = "") {
 
   return {
     status: "ok" as const,
-    planilha: { nome: workbook.file_name, atualizadaEm: workbook.created_at, linhasNoEscopo: scopedRows.length },
+    planilha: {
+      nome: workbook.file_name,
+      atualizadaEm: workbook.created_at,
+      linhasNoEscopo: scopedRows.length,
+    },
     escopo: {
       accounts: report.generalAccounts,
       quarters: report.selectedQuarters.map((quarter) => `Q${quarter}`),
       accountsPorQuarter: report.quarterAccounts,
-      filtros: FILTER_DIMS.map((key) => ({ nome: FILTER_LABELS[key], valores: prefs.filters[key] })).filter((item) => item.valores.length),
+      filtros: FILTER_DIMS.map((key) => ({
+        nome: FILTER_LABELS[key],
+        valores: prefs.filters[key],
+      })).filter((item) => item.valores.length),
     },
     resumoPorQuarter: report.quarterLines,
     evolucaoMensal: report.monthlyLines,

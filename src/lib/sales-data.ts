@@ -50,7 +50,6 @@ export const DIMENSIONS = [
   { key: "city", label: "Cidade" },
 ] as const;
 
-
 export type DimensionKey = (typeof DIMENSIONS)[number]["key"];
 
 export type Granularity = "month" | "quarter" | "week";
@@ -63,12 +62,14 @@ export const parseSalesNumber = (v: unknown): number => {
     const negative = /^\(.*\)$/.test(cleaned);
     if (negative) cleaned = cleaned.slice(1, -1);
     if (cleaned.includes(",") && cleaned.includes(".")) {
-      cleaned = cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")
-        ? cleaned.replace(/\./g, "").replace(",", ".")
-        : cleaned.replace(/,/g, "");
+      cleaned =
+        cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")
+          ? cleaned.replace(/\./g, "").replace(",", ".")
+          : cleaned.replace(/,/g, "");
     } else if (cleaned.includes(",")) {
       cleaned = /^[-+]?\d{1,3}(,\d{3})+$/.test(cleaned)
-        ? cleaned.replace(/,/g, "") : cleaned.replace(",", ".");
+        ? cleaned.replace(/,/g, "")
+        : cleaned.replace(",", ".");
     } else if (/^[-+]?\d{1,3}(\.\d{3})+$/.test(cleaned)) cleaned = cleaned.replace(/\./g, "");
     const n = Number(cleaned);
     if (cleaned && Number.isFinite(n)) return negative ? -n : n;
@@ -139,7 +140,14 @@ export function matrixToRows(matrix: unknown[][]): SalesRow[] {
   const cRevenue = col("Extended Net Price USD");
   const cQty = col("Quantity");
 
-  const required = [["Fiscal Year", cYear], ["Fiscal Month", cMonth], ["Line of Business", cLob], ["Account", cAccount], ["Extended Net Price USD", cRevenue], ["Quantity", cQty]] as const;
+  const required = [
+    ["Fiscal Year", cYear],
+    ["Fiscal Month", cMonth],
+    ["Line of Business", cLob],
+    ["Account", cAccount],
+    ["Extended Net Price USD", cRevenue],
+    ["Quantity", cQty],
+  ] as const;
   const missing = required.filter(([, index]) => index < 0).map(([name]) => name);
   if (missing.length) throw new Error(`Colunas obrigatórias ausentes: ${missing.join(", ")}.`);
   const out: SalesRow[] = [];
@@ -150,12 +158,15 @@ export function matrixToRows(matrix: unknown[][]): SalesRow[] {
     const at = (c: number): unknown => (c >= 0 ? r[c] : undefined);
     const month = num(at(cMonth));
     if (!r.some((value) => value !== null && value !== undefined && value !== "")) continue;
-    if (!Number.isInteger(month) || month < 1 || month > 12) throw new Error(`Mês fiscal inválido na linha ${i + 1}.`);
+    if (!Number.isInteger(month) || month < 1 || month > 12)
+      throw new Error(`Mês fiscal inválido na linha ${i + 1}.`);
     const year = num(at(cYear));
-    if (!Number.isInteger(year) || year <= 0) throw new Error(`Ano fiscal inválido na linha ${i + 1}.`);
+    if (!Number.isInteger(year) || year <= 0)
+      throw new Error(`Ano fiscal inválido na linha ${i + 1}.`);
     years.add(year);
     const quarter = num(at(cQuarter)) || Math.ceil(month / 3);
-    if (quarter !== Math.ceil(month / 3)) throw new Error(`Quarter incompatível com o mês na linha ${i + 1}.`);
+    if (quarter !== Math.ceil(month / 3))
+      throw new Error(`Quarter incompatível com o mês na linha ${i + 1}.`);
     const label = str(at(cMonths));
     out.push({
       fiscalYear: year,
@@ -179,7 +190,10 @@ export function matrixToRows(matrix: unknown[][]): SalesRow[] {
       quantity: num(at(cQty)),
     });
   }
-  if (years.size > 1) throw new Error("A planilha contém mais de um ano fiscal. Importe um ano por vez para não misturar as metas anuais.");
+  if (years.size > 1)
+    throw new Error(
+      "A planilha contém mais de um ano fiscal. Importe um ano por vez para não misturar as metas anuais.",
+    );
   return out;
 }
 
@@ -199,15 +213,26 @@ export async function parseWorkbook(file: File): Promise<SalesRow[]> {
     const worker = new Worker(new URL("./workbook.worker.ts", import.meta.url), { type: "module" });
     const timeout = setTimeout(() => {
       worker.terminate();
-      reject(new Error("A leitura excedeu o tempo disponível. Verifique o tamanho e o conteúdo da planilha."));
+      reject(
+        new Error(
+          "A leitura excedeu o tempo disponível. Verifique o tamanho e o conteúdo da planilha.",
+        ),
+      );
     }, 120_000);
-    const finish = () => { clearTimeout(timeout); worker.terminate(); };
+    const finish = () => {
+      clearTimeout(timeout);
+      worker.terminate();
+    };
     worker.onmessage = (event: MessageEvent<{ rows?: SalesRow[]; error?: string }>) => {
       finish();
-      if (event.data.error || !event.data.rows) reject(new Error(event.data.error ?? "Resposta inválida do leitor."));
+      if (event.data.error || !event.data.rows)
+        reject(new Error(event.data.error ?? "Resposta inválida do leitor."));
       else resolve(event.data.rows);
     };
-    worker.onerror = () => { finish(); reject(new Error("Não foi possível iniciar a leitura da planilha. Tente novamente.")); };
+    worker.onerror = () => {
+      finish();
+      reject(new Error("Não foi possível iniciar a leitura da planilha. Tente novamente."));
+    };
     worker.postMessage({ buffer: buf, fileName: file.name }, [buf]);
   });
 }
@@ -229,8 +254,6 @@ export async function parseWorkbookBuffer(buf: ArrayBuffer, fileName: string): P
   return parseWithXlsx(buf);
 }
 
-
-
 export const uniqueValues = (rows: SalesRow[], key: DimensionKey): string[] =>
   Array.from(new Set(rows.map((r) => r[key]))).sort((a, b) => a.localeCompare(b));
 
@@ -244,7 +267,6 @@ export const FILTER_LABELS: Record<FilterKey, string> = {
   endUser: "Cliente Final",
   disti: "Distribuidor",
 };
-
 
 export type Filters = Record<FilterKey, string[]>;
 
@@ -330,10 +352,10 @@ export const sum = (rows: SalesRow[], metric: "revenue" | "quantity" = "revenue"
   rows.reduce((acc, r) => acc + r[metric], 0);
 
 const usdFormatter = new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  });
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
 export const fmtUSD = (v: number) => usdFormatter.format(v);
 
 export const fmtPct = (v: number) => `${(v * 100).toFixed(1)}%`;

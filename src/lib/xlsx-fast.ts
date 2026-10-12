@@ -9,29 +9,45 @@ const colIndex = (ref: string): number => {
 const unescapeXml = (s: string): string =>
   s.replace(/&(#x[\da-f]+|#\d+|lt|gt|quot|apos|amp);/gi, (entity, code: string) => {
     if (code.startsWith("#")) {
-      const value = code[1]?.toLowerCase() === "x" ? parseInt(code.slice(2), 16) : Number(code.slice(1));
+      const value =
+        code[1]?.toLowerCase() === "x" ? parseInt(code.slice(2), 16) : Number(code.slice(1));
       return value >= 0 && value <= 0x10ffff ? String.fromCodePoint(value) : entity;
     }
-    return ({ lt: "<", gt: ">", quot: '"', apos: "'", amp: "&" } as Record<string, string>)[code] ?? entity;
+    return (
+      ({ lt: "<", gt: ">", quot: '"', apos: "'", amp: "&" } as Record<string, string>)[code] ??
+      entity
+    );
   });
 
-const attributes = (tag: string) => Object.fromEntries(
-  [...tag.matchAll(/([\w:]+)\s*=\s*["']([^"']*)["']/g)].map((match) => [match[1], unescapeXml(match[2] ?? "")]),
-);
+const attributes = (tag: string) =>
+  Object.fromEntries(
+    [...tag.matchAll(/([\w:]+)\s*=\s*["']([^"']*)["']/g)].map((match) => [
+      match[1],
+      unescapeXml(match[2] ?? ""),
+    ]),
+  );
 
 function workbookMetadata(bytes: Uint8Array) {
-  const files = unzipSync(bytes, { filter: (file) =>
-    ["xl/sharedStrings.xml", "xl/workbook.xml", "xl/_rels/workbook.xml.rels"].includes(file.name),
+  const files = unzipSync(bytes, {
+    filter: (file) =>
+      ["xl/sharedStrings.xml", "xl/workbook.xml", "xl/_rels/workbook.xml.rels"].includes(file.name),
   });
   const decode = (name: string) => new TextDecoder().decode(files[name]);
   const first = /<sheet\s[^>]*\/?\s*>/.exec(decode("xl/workbook.xml"))?.[0];
   if (!first) throw new Error("A planilha não contém abas.");
   const id = attributes(first)["r:id"];
-  const relation = [...decode("xl/_rels/workbook.xml.rels").matchAll(/<Relationship\s[^>]*\/?\s*>/g)]
-    .map((match) => attributes(match[0])).find((item) => item.Id === id);
-  if (!relation?.Target || relation.TargetMode === "External") throw new Error("A primeira aba não pôde ser localizada.");
+  const relation = [
+    ...decode("xl/_rels/workbook.xml.rels").matchAll(/<Relationship\s[^>]*\/?\s*>/g),
+  ]
+    .map((match) => attributes(match[0]))
+    .find((item) => item.Id === id);
+  if (!relation?.Target || relation.TargetMode === "External")
+    throw new Error("A primeira aba não pôde ser localizada.");
   const parts: string[] = [];
-  for (const part of (relation.Target.startsWith("/") ? relation.Target.slice(1) : `xl/${relation.Target}`).split("/")) {
+  for (const part of (relation.Target.startsWith("/")
+    ? relation.Target.slice(1)
+    : `xl/${relation.Target}`
+  ).split("/")) {
     if (part === "..") parts.pop();
     else if (part && part !== ".") parts.push(part);
   }
@@ -62,10 +78,14 @@ function parseRow(xml: string, strings: string[]): unknown[] {
     } else {
       const raw = /<v\b[^>]*>(.*?)<\/v>/s.exec(inner)?.[1];
       if (raw === undefined) {
-        if (/<f\b/.test(inner)) throw new Error("Há fórmulas sem resultado salvo. Abra e salve a planilha no Excel antes de importar.");
+        if (/<f\b/.test(inner))
+          throw new Error(
+            "Há fórmulas sem resultado salvo. Abra e salve a planilha no Excel antes de importar.",
+          );
         continue;
       }
-      if (type === "e") throw new Error("Há células com erro na planilha. Corrija-as antes de importar.");
+      if (type === "e")
+        throw new Error("Há células com erro na planilha. Corrija-as antes de importar.");
       if (type === "s") {
         value = strings[Number(raw)];
         if (value === undefined) throw new Error("Referência de texto inválida na planilha.");
@@ -91,7 +111,10 @@ export function readSheetMatrix(bytes: Uint8Array): unknown[][] {
     if (file.name !== sheetPath) return;
     found = true;
     file.ondata = (error, chunk, final) => {
-      if (error) { failure = error; return; }
+      if (error) {
+        failure = error;
+        return;
+      }
       buffer += decoder.decode(chunk, { stream: !final });
       const rows = /<row\b[^>]*(?:\/>|>[\s\S]*?<\/row>)/g;
       let match: RegExpExecArray | null;
