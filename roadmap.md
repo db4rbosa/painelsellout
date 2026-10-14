@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Recuperar a última planilha com avisos detalhados, sem bloquear linhas válidas
+
 - [x] Ordenar metas por mês, quarter e ano
 - [x] Revisar e otimizar leitura da planilha e processamento sem alterar regras de negócio
 - [ ] Validar navegação de metas com a planilha atual salva: bloqueado por meses fiscais 13–20 a partir da linha 24996; leitura da planilha original, responsividade e 65 testes já validados
