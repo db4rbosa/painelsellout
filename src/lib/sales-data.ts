@@ -54,7 +54,7 @@ export type DimensionKey = (typeof DIMENSIONS)[number]["key"];
 
 export type Granularity = "month" | "quarter" | "week";
 
-export const parseSalesNumber = (v: unknown): number => {
+export const parseSalesNumber = (v: unknown, fieldName?: string): number => {
   if (v === null || v === undefined || v === "") return 0;
   if (typeof v === "number" && Number.isFinite(v)) return v;
   if (typeof v === "string") {
@@ -74,7 +74,8 @@ export const parseSalesNumber = (v: unknown): number => {
     const n = Number(cleaned);
     if (cleaned && Number.isFinite(n)) return negative ? -n : n;
   }
-  throw new Error("Valor numérico inválido na planilha.");
+  const displayVal = String(v).slice(0, 20);
+  throw new Error(`${fieldName ? `O campo "${fieldName}"` : "Valor numérico"} contém um dado inválido: "${displayVal}"`);
 };
 const num = parseSalesNumber;
 
@@ -86,20 +87,7 @@ const str = (v: unknown): string => {
 
 type RawRow = Record<string, unknown>;
 
-export type ImportIssue = {
-  row: number;
-  field: string;
-  value: string;
-  reason: string;
-};
-
-export type WorkbookImportResult = {
-  rows: SalesRow[];
-  issues: ImportIssue[];
-  excludedRows: number;
-};
-
-export function normalizeRows(rawRows: RawRow[]): SalesRow[] {
+export function normalizeRows(rawRows: RawRow[]): { rows: SalesRow[]; warnings: string[] } {
   const headers = [...new Set(rawRows.flatMap((row) => Object.keys(row)))];
   return matrixToRows([headers, ...rawRows.map((row) => headers.map((header) => row[header]))]);
 }
@@ -107,7 +95,6 @@ export function normalizeRows(rawRows: RawRow[]): SalesRow[] {
 let fastPromise: Promise<typeof import("./xlsx-fast")> | null = null;
 let xlsxPromise: Promise<typeof import("xlsx")> | null = null;
 
-/** Carrega antecipadamente o leitor rápido, para a importação começar na hora. */
 export function preloadWorkbookParser(): Promise<unknown> {
   fastPromise ??= import("./xlsx-fast");
   return fastPromise;
@@ -116,13 +103,7 @@ export function preloadWorkbookParser(): Promise<unknown> {
 const loadXlsx = () => (xlsxPromise ??= import("xlsx"));
 
 export function matrixToRows(matrix: unknown[][]): { rows: SalesRow[]; warnings: string[] } {
-  return matrixToImportResult(matrix).rows;
-}
-
-export function matrixToImportResult(
-  matrix: unknown[][] & { sourceRows?: number[] },
-): WorkbookImportResult {
-  if (!matrix.length) return { rows: [], issues: [], excludedRows: 0 };
+  if (!matrix.length) return { rows: [], warnings: [] };
 
   const idx = new Map<string, number>();
   (matrix[0] ?? []).forEach((h, i) => {
@@ -159,122 +140,112 @@ export function matrixToImportResult(
   const cRevenue = col("Extended Net Price USD");
   const cQty = col("Quantity");
 
-  const required = [
-    ["Fiscal Year", cYear],
-    ["Fiscal Month", cMonth],
-    ["Line of Business", cLob],
-    ["Account", cAccount],
-    ["Extended Net Price USD", cRevenue],
-    ["Quantity", cQty],
-  ] as const;
-  const missing = required.filter(([, index]) => index < 0).map(([name]) => name);
+  const requiredCols = [
+    { name: "Fiscal Year", index: cYear },
+    { name: "Fiscal Month", index: cMonth },
+    { name: "Line of Business", index: cLob },
+    { name: "Account", index: cAccount },
+    { name: "Extended Net Price USD", index: cRevenue },
+    { name: "Quantity", index: cQty },
+  ];
+
+  const missing = requiredCols.filter((c) => c.index < 0).map((c) => c.name);
   if (missing.length) throw new Error(`Colunas obrigatórias ausentes: ${missing.join(", ")}.`);
+
   const out: SalesRow[] = [];
-  const issues: ImportIssue[] = [];
-  let excludedRows = 0;
+  const warnings: string[] = [];
   const years = new Set<number>();
+
   for (let i = 1; i < matrix.length; i++) {
     const r = matrix[i];
-    if (!r) continue;
+    if (!r || !r.some((value) => value !== null && value !== undefined && value !== "")) continue;
+    
     const at = (c: number): unknown => (c >= 0 ? r[c] : undefined);
-    if (!r.some((value) => value !== null && value !== undefined && value !== "")) continue;
-    // Summary/footer rows have no fiscal month and are not sales transactions.
-    if (at(cMonth) === null || at(cMonth) === undefined || at(cMonth) === "") continue;
-    const issueStart = issues.length;
-    const readNumber = (
-      column: number,
-      field: string,
-      valid: (value: number) => boolean = () => true,
-      reason = "Informe um número válido; erros de célula ou fórmulas sem resultado não podem ser calculados.",
-    ) => {
-      const raw = at(column);
-      try {
-        const value = num(raw);
-        if (valid(value)) return value;
-      } catch {
-        // Keep the original value and its exact field, never replace it with zero.
+    
+    try {
+      const month = num(at(cMonth), "Fiscal Month");
+      // Summary/footer rows have no fiscal month and are not sales transactions.
+      if (month === 0) continue;
+      
+      if (!Number.isInteger(month) || month < 1 || month > 12) {
+        throw new Error(`O campo "Fiscal Month" deve ser um número entre 1 e 12 (valor: "${month}")`);
       }
-      issues.push({ row: matrix.sourceRows?.[i] ?? i + 1, field, value: String(raw ?? "(vazio)"), reason });
-      return 0;
-    };
-    const month = readNumber(cMonth, "Fiscal Month", (v) => Number.isInteger(v) && v >= 1 && v <= 12, "O mês fiscal deve ser um inteiro de 1 a 12.");
-    const year = readNumber(cYear, "Fiscal Year", (v) => Number.isInteger(v) && v > 0, "O ano fiscal deve ser um inteiro positivo.");
-    const quarter = at(cQuarter) === null || at(cQuarter) === undefined || at(cQuarter) === ""
-      ? Math.ceil(month / 3)
-      : readNumber(cQuarter, "Fiscal Quarter", (v) => Number.isInteger(v) && v >= 1 && v <= 4, "O quarter fiscal deve ser um inteiro de 1 a 4.");
-    const week = readNumber(cWeek, "Fiscal Week");
-    const revenue = readNumber(cRevenue, "Extended Net Price USD");
-    const quantity = readNumber(cQty, "Quantity");
-    if (issues.length > issueStart) {
-      excludedRows++;
-      continue;
+
+      const year = num(at(cYear), "Fiscal Year");
+      if (!Number.isInteger(year) || year <= 0) {
+        throw new Error(`O campo "Fiscal Year" é inválido (valor: "${year}")`);
+      }
+      years.add(year);
+
+      const quarter = num(at(cQuarter), "Fiscal Quarter") || Math.ceil(month / 3);
+      if (!Number.isInteger(quarter) || quarter < 1 || quarter > 4) {
+        throw new Error(`O campo "Fiscal Quarter" é inválido (valor: "${quarter}")`);
+      }
+
+      const label = str(at(cMonths));
+      
+      out.push({
+        fiscalYear: year,
+        fiscalQuarter: quarter,
+        fiscalMonth: month,
+        fiscalWeek: num(at(cWeek), "Fiscal Week"),
+        monthLabel: label !== "—" ? label : (MONTH_LABELS[month - 1] ?? "—"),
+        lob: str(at(cLob)),
+        disti: str(at(cDisti)),
+        reseller: str(at(cReseller)),
+        billTo: str(at(cBillTo)),
+        shipTo: str(at(cShipTo)),
+        endUser: str(at(cEndUser)),
+        sku: str(at(cSku)),
+        cbm: str(at(cCbm)),
+        account: str(at(cAccount)),
+        segment: str(at(cSegment)),
+        state: str(at(cState)),
+        city: str(at(cCity)),
+        revenue: num(at(cRevenue), "Extended Net Price USD"),
+        quantity: num(at(cQty), "Quantity"),
+      });
+    } catch (e) {
+      warnings.push(`Linha ${i + 1}: ${e instanceof Error ? e.message : "Erro desconhecido"}`);
     }
-    years.add(year);
-    const label = str(at(cMonths));
-    out.push({
-      fiscalYear: year,
-      fiscalQuarter: quarter,
-      fiscalMonth: month,
-      fiscalWeek: week,
-      monthLabel: label !== "—" ? label : (MONTH_LABELS[month - 1] ?? "—"),
-      lob: str(at(cLob)),
-      disti: str(at(cDisti)),
-      reseller: str(at(cReseller)),
-      billTo: str(at(cBillTo)),
-      shipTo: str(at(cShipTo)),
-      endUser: str(at(cEndUser)),
-      sku: str(at(cSku)),
-      cbm: str(at(cCbm)),
-      account: str(at(cAccount)),
-      segment: str(at(cSegment)),
-      state: str(at(cState)),
-      city: str(at(cCity)),
-      revenue,
-      quantity,
-    });
   }
-  if (years.size > 1)
+
+  if (years.size > 1) {
     throw new Error(
-      "A planilha contém mais de um ano fiscal. Importe um ano por vez para não misturar as metas anuais.",
+      `A planilha contém mais de um ano fiscal (${Array.from(years).sort().join(", ")}). Importe um ano por vez para não misturar as metas anuais.`,
     );
-  return { rows: out, issues, excludedRows };
+  }
+
+  return { rows: out, warnings };
 }
 
-async function parseWithXlsx(buf: ArrayBuffer): Promise<WorkbookImportResult> {
+async function parseWithXlsx(buf: ArrayBuffer): Promise<{ rows: SalesRow[]; warnings: string[] }> {
   const XLSX = await loadXlsx();
   const wb = XLSX.read(buf, { dense: true, sheets: 0 });
   const name = wb.SheetNames[0];
   const sheet = name ? wb.Sheets[name] : undefined;
   if (!sheet) throw new Error("A planilha não contém abas.");
-  return matrixToImportResult(XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null, blankrows: true }));
+  return matrixToRows(XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null }));
 }
 
-export async function parseWorkbook(file: File): Promise<SalesRow[]> {
-  return (await parseWorkbookDetailed(file)).rows;
-}
-
-export async function parseWorkbookDetailed(file: File): Promise<WorkbookImportResult> {
+export async function parseWorkbook(file: File): Promise<{ rows: SalesRow[]; warnings: string[] }> {
   const buf = await file.arrayBuffer();
-  if (typeof Worker === "undefined") return parseWorkbookBufferDetailed(buf, file.name);
-  return new Promise<WorkbookImportResult>((resolve, reject) => {
+  if (typeof Worker === "undefined") return parseWorkbookBuffer(buf, file.name);
+  return new Promise((resolve, reject) => {
     const worker = new Worker(new URL("./workbook.worker.ts", import.meta.url), { type: "module" });
     const timeout = setTimeout(() => {
       worker.terminate();
-      reject(
-        new Error(
-          "A leitura excedeu o tempo disponível. Verifique o tamanho e o conteúdo da planilha.",
-        ),
-      );
+      reject(new Error("A leitura excedeu o tempo disponível. Verifique o tamanho e o conteúdo da planilha."));
     }, 120_000);
     const finish = () => {
       clearTimeout(timeout);
       worker.terminate();
     };
-    worker.onmessage = (event: MessageEvent<{ result?: WorkbookImportResult; error?: string }>) => {
+    worker.onmessage = (event: MessageEvent<{ rows?: SalesRow[]; warnings?: string[]; error?: string }>) => {
       finish();
-      if (event.data.error || !event.data.result)
+      if (event.data.error || !event.data.rows)
         reject(new Error(event.data.error ?? "Resposta inválida do leitor."));
-      else resolve(event.data.result);
+      else resolve({ rows: event.data.rows, warnings: event.data.warnings ?? [] });
     };
     worker.onerror = () => {
       finish();
@@ -284,22 +255,18 @@ export async function parseWorkbookDetailed(file: File): Promise<WorkbookImportR
   });
 }
 
-export async function parseWorkbookBuffer(buf: ArrayBuffer, fileName: string): Promise<SalesRow[]> {
-  return (await parseWorkbookBufferDetailed(buf, fileName)).rows;
-}
-
-export async function parseWorkbookBufferDetailed(buf: ArrayBuffer, fileName: string): Promise<WorkbookImportResult> {
+export async function parseWorkbookBuffer(buf: ArrayBuffer, fileName: string): Promise<{ rows: SalesRow[]; warnings: string[] }> {
   const isXlsx = /\.xlsx$/i.test(fileName);
 
   if (isXlsx) {
-    let matrix: (unknown[][] & { sourceRows?: number[] }) | undefined;
+    let matrix: unknown[][] | undefined;
     try {
       const { readSheetMatrix } = await (fastPromise ??= import("./xlsx-fast"));
       matrix = readSheetMatrix(new Uint8Array(buf));
     } catch {
       // cai para o leitor completo abaixo
     }
-    if (matrix?.length) return matrixToImportResult(matrix);
+    if (matrix?.length) return matrixToRows(matrix);
   }
 
   return parseWithXlsx(buf);
