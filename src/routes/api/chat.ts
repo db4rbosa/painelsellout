@@ -103,7 +103,7 @@ export const Route = createFileRoute("/api/chat")({
                   name: "gemini",
                   baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
                   apiKey: geminiKey,
-                })("gemini-2.5-flash")
+                })("gemini-3.8-flash")
               : lovable.responses("openai/gpt-6-astra"),
             system: [
               "Você é um analista de Sales Out. Responda em português do Brasil, com objetividade e números claros.",
