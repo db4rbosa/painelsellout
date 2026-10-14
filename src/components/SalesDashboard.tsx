@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  AlertTriangle,
   BarChart3,
   Building2,
   FileDown,
@@ -99,6 +100,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const [savingState, setSavingState] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
@@ -182,10 +184,13 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           const res = await fetch(state.workbook.url);
           if (!res.ok) throw new Error("Não foi possível baixar a última planilha.");
           const blob = await res.blob();
-          const parsed = await parseWorkbook(
+          const { rows: parsedRows, warnings: parsedWarnings } = await parseWorkbook(
             new File([blob], state.workbook.fileName, { type: blob.type }),
           );
-          if (!cancelled && parsed.length) setRows(parsed);
+          if (!cancelled && parsedRows.length) {
+            setRows(parsedRows);
+            setWarnings(parsedWarnings);
+          }
         }
       } catch (error) {
         if (!cancelled)
@@ -441,12 +446,14 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     if (!file) return;
     setLoading(true);
     setError("");
+    setWarnings([]);
     await new Promise<void>((r) => requestAnimationFrame(() => r()));
     try {
-      const parsed = await parseWorkbook(file);
-      if (!parsed.length) throw new Error("Nenhuma linha válida encontrada na planilha.");
+      const { rows: parsedRows, warnings: parsedWarnings } = await parseWorkbook(file);
+      if (!parsedRows.length) throw new Error("Nenhuma linha válida encontrada na planilha.");
       // Mantém a configuração atual: tudo é recalculado com os filtros e metas já salvos.
-      setRows(parsed);
+      setRows(parsedRows);
+      setWarnings(parsedWarnings);
       setFileName(file.name);
 
       const upload = await prepareUpload({ data: { fileName: file.name } });
@@ -482,6 +489,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const handlePdfExport = async () => {
     setExportingPdf(true);
     setError("");
+    setWarnings([]);
     try {
       await downloadReportPdf(report);
     } catch {
@@ -494,6 +502,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const handleExcelExport = async () => {
     setExportingExcel(true);
     setError("");
+    setWarnings([]);
     try {
       await downloadReportExcel(report, scopedRows, accountsByQuarter);
     } catch {
@@ -628,6 +637,19 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
       {error ? (
         <div className="mb-6 flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           <X className="size-4" /> {error}
+        </div>
+      ) : null}
+
+      {warnings.length > 0 ? (
+        <div className="mb-6 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+          <div className="flex items-center gap-2 font-semibold mb-1">
+            <AlertTriangle className="size-4" /> 
+            Importação concluída com {warnings.length} aviso(s)
+          </div>
+          <ul className="list-disc list-inside space-y-0.5 opacity-90 text-xs">
+            {warnings.slice(0, 5).map((w, i) => <li key={i}>{w}</li>)}
+            {warnings.length > 5 && <li>E mais {warnings.length - 5} avisos...</li>}
+          </ul>
         </div>
       ) : null}
 
