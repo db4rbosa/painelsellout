@@ -61,6 +61,7 @@ async function probeGateway(): Promise<"ok" | "credits" | "unknown"> {
 }
 
 export async function getAiAvailability(): Promise<AiAvailability> {
+  if (process.env["GOOGLE_API_KEY"]) return { available: true };
   const status = await readStatus();
   if (!status.paused) return { available: true };
   const last = status.checkedAt ? Date.parse(status.checkedAt) : 0;

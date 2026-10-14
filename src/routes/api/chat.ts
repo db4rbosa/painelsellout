@@ -8,6 +8,7 @@ import { requireApprovedChatUser } from "@/lib/chat-auth.server";
 import { buildUserSalesContext } from "@/lib/chat-context.server";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createFileRoute } from "@tanstack/react-router";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { streamText, type ModelMessage, type UIMessage } from "ai";
 import { z } from "zod";
 
@@ -84,19 +85,26 @@ export const Route = createFileRoute("/api/chat")({
           );
           history.push({ role: "user", content: question });
 
+          const geminiKey = process.env["GOOGLE_API_KEY"];
           const key = process.env["LOVABLE_API_KEY"];
-          if (!key) return new Response("A análise por IA não está configurada.", { status: 500 });
+          if (!geminiKey && !key) return new Response("A análise por IA não está configurada.", { status: 500 });
           const initialRunId = getLovableAiGatewayRunId(request);
           const runIdFetch = createLovableAiGatewayRunIdFetch(initialRunId);
           const lovable = createOpenAI({
             baseURL: "https://ai.gateway.lovable.dev/v1",
-            apiKey: key,
-            headers: { "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+            apiKey: key ?? "",
+            headers: { "Lovable-API-Key": key ?? "", "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
             fetch: runIdFetch.fetch,
           });
 
           const result = streamText({
-            model: lovable.responses("openai/gpt-6-astra"),
+            model: geminiKey
+              ? createOpenAICompatible({
+                  name: "gemini",
+                  baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
+                  apiKey: geminiKey,
+                })("gemini-2.5-flash")
+              : lovable.responses("openai/gpt-6-astra"),
             system: [
               "Você é um analista de Sales Out. Responda em português do Brasil, com objetividade e números claros.",
               "Use somente o CONTEXTO DE DADOS fornecido. Não invente valores e diga quando algo não estiver disponível.",
@@ -111,7 +119,7 @@ export const Route = createFileRoute("/api/chat")({
             ].join("\n\n"),
             messages: history,
             abortSignal: request.signal,
-            providerOptions: {
+            providerOptions: geminiKey ? {} : {
               openai: {
                 forceReasoning: true,
                 reasoningEffort: "medium",
@@ -127,7 +135,7 @@ export const Route = createFileRoute("/api/chat")({
             sendReasoning: true,
             onError: (error) => {
               const text = error instanceof Error ? error.message : String(error);
-              if (/402|credit|payment required/i.test(text)) {
+              if (!geminiKey && /402|credit|payment required/i.test(text)) {
                 void import("@/lib/ai-status.server").then((m) => m.markAiCreditsExhausted());
               }
               return safeStreamError(error);
