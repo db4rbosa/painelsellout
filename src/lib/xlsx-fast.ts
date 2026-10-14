@@ -78,15 +78,11 @@ function parseRow(xml: string, strings: string[]): unknown[] {
     } else {
       const raw = /<v\b[^>]*>(.*?)<\/v>/s.exec(inner)?.[1];
       if (raw === undefined) {
-        if (/<f\b/.test(inner))
-          throw new Error(
-            "Há fórmulas sem resultado salvo. Abra e salve a planilha no Excel antes de importar.",
-          );
+        if (/<f\b/.test(inner)) cells[colIndex(ref)] = "#FORMULA_SEM_RESULTADO!";
         continue;
       }
-      if (type === "e")
-        throw new Error("Há células com erro na planilha. Corrija-as antes de importar.");
-      if (type === "s") {
+      if (type === "e") value = unescapeXml(raw);
+      else if (type === "s") {
         value = strings[Number(raw)];
         if (value === undefined) throw new Error("Referência de texto inválida na planilha.");
       } else if (type === "str") value = unescapeXml(raw);
@@ -99,10 +95,13 @@ function parseRow(xml: string, strings: string[]): unknown[] {
 }
 
 /** Lê a primeira aba na ordem do Excel, sem descartar dados após intervalos vazios. */
-export function readSheetMatrix(bytes: Uint8Array): unknown[][] {
+export type SheetMatrix = unknown[][] & { sourceRows?: number[] };
+
+export function readSheetMatrix(bytes: Uint8Array): SheetMatrix {
   const { sheetPath, strings } = workbookMetadata(bytes);
   const decoder = new TextDecoder();
-  const matrix: unknown[][] = [];
+  const matrix: SheetMatrix = [];
+  matrix.sourceRows = [];
   let buffer = "";
   let found = false;
   let finished = false;
@@ -124,7 +123,10 @@ export function readSheetMatrix(bytes: Uint8Array): unknown[][] {
         // Empty formatting rows cost no cell parsing and consume no matrix memory.
         if (!/<(?:v|t|f)\b/.test(match[0])) continue;
         const cells = parseRow(match[0], strings);
-        if (cells.some((cell) => cell !== "" && cell !== undefined)) matrix.push(cells);
+        if (cells.some((cell) => cell !== "" && cell !== undefined)) {
+          matrix.push(cells);
+          matrix.sourceRows?.push(Number(/\br="(\d+)"/.exec(match[0])?.[1]) || matrix.length);
+        }
       }
       buffer = buffer.slice(consumed);
       if (final) finished = /<\/worksheet>/.test(buffer);
