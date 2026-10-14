@@ -74,8 +74,8 @@ export const parseSalesNumber = (v: unknown, fieldName?: string): number => {
     const n = Number(cleaned);
     if (cleaned && Number.isFinite(n)) return negative ? -n : n;
   }
-  const displayVal = String(v).slice(0, 20);
-  throw new Error(`${fieldName ? `O campo "${fieldName}"` : "Valor numérico"} contém um dado inválido: "${displayVal}"`);
+  const displayVal = String(v).slice(0, 30);
+  throw new Error(`${fieldName ? `O campo "${fieldName}"` : "Valor"} contém dado inválido: "${displayVal}"`);
 };
 const num = parseSalesNumber;
 
@@ -140,16 +140,15 @@ export function matrixToRows(matrix: unknown[][]): { rows: SalesRow[]; warnings:
   const cRevenue = col("Extended Net Price USD");
   const cQty = col("Quantity");
 
-  const requiredCols = [
-    { name: "Fiscal Year", index: cYear },
-    { name: "Fiscal Month", index: cMonth },
-    { name: "Line of Business", index: cLob },
-    { name: "Account", index: cAccount },
-    { name: "Extended Net Price USD", index: cRevenue },
-    { name: "Quantity", index: cQty },
-  ];
-
-  const missing = requiredCols.filter((c) => c.index < 0).map((c) => c.name);
+  const required = [
+    ["Fiscal Year", cYear],
+    ["Fiscal Month", cMonth],
+    ["Line of Business", cLob],
+    ["Account", cAccount],
+    ["Extended Net Price USD", cRevenue],
+    ["Quantity", cQty],
+  ] as const;
+  const missing = required.filter(([, index]) => index < 0).map(([name]) => name);
   if (missing.length) throw new Error(`Colunas obrigatórias ausentes: ${missing.join(", ")}.`);
 
   const out: SalesRow[] = [];
@@ -163,23 +162,26 @@ export function matrixToRows(matrix: unknown[][]): { rows: SalesRow[]; warnings:
     const at = (c: number): unknown => (c >= 0 ? r[c] : undefined);
     
     try {
-      const month = num(at(cMonth), "Fiscal Month");
+      const monthRaw = at(cMonth);
+      const month = num(monthRaw, "Fiscal Month");
       // Summary/footer rows have no fiscal month and are not sales transactions.
       if (month === 0) continue;
       
       if (!Number.isInteger(month) || month < 1 || month > 12) {
-        throw new Error(`O campo "Fiscal Month" deve ser um número entre 1 e 12 (valor: "${month}")`);
+        throw new Error(`Mês fiscal inválido: "${monthRaw}" (deve ser 1-12)`);
       }
 
-      const year = num(at(cYear), "Fiscal Year");
+      const yearRaw = at(cYear);
+      const year = num(yearRaw, "Fiscal Year");
       if (!Number.isInteger(year) || year <= 0) {
-        throw new Error(`O campo "Fiscal Year" é inválido (valor: "${year}")`);
+        throw new Error(`Ano fiscal inválido: "${yearRaw}"`);
       }
       years.add(year);
 
-      const quarter = num(at(cQuarter), "Fiscal Quarter") || Math.ceil(month / 3);
+      const quarterRaw = at(cQuarter);
+      const quarter = num(quarterRaw, "Fiscal Quarter") || Math.ceil(month / 3);
       if (!Number.isInteger(quarter) || quarter < 1 || quarter > 4) {
-        throw new Error(`O campo "Fiscal Quarter" é inválido (valor: "${quarter}")`);
+        throw new Error(`Quarter fiscal inválido: "${quarterRaw}"`);
       }
 
       const label = str(at(cMonths));
@@ -206,13 +208,15 @@ export function matrixToRows(matrix: unknown[][]): { rows: SalesRow[]; warnings:
         quantity: num(at(cQty), "Quantity"),
       });
     } catch (e) {
-      warnings.push(`Linha ${i + 1}: ${e instanceof Error ? e.message : "Erro desconhecido"}`);
+      if (warnings.length < 100) {
+        warnings.push(`Linha ${i + 1}: ${e instanceof Error ? e.message : "Erro desconhecido"}`);
+      }
     }
   }
 
   if (years.size > 1) {
     throw new Error(
-      `A planilha contém mais de um ano fiscal (${Array.from(years).sort().join(", ")}). Importe um ano por vez para não misturar as metas anuais.`,
+      `A planilha contém mais de um ano fiscal (${Array.from(years).sort().join(", ")}). Importe apenas um ano por vez.`,
     );
   }
 
@@ -235,7 +239,7 @@ export async function parseWorkbook(file: File): Promise<{ rows: SalesRow[]; war
     const worker = new Worker(new URL("./workbook.worker.ts", import.meta.url), { type: "module" });
     const timeout = setTimeout(() => {
       worker.terminate();
-      reject(new Error("A leitura excedeu o tempo disponível. Verifique o tamanho e o conteúdo da planilha."));
+      reject(new Error("A leitura excedeu o tempo disponível. Verifique o tamanho da planilha."));
     }, 120_000);
     const finish = () => {
       clearTimeout(timeout);
@@ -264,7 +268,7 @@ export async function parseWorkbookBuffer(buf: ArrayBuffer, fileName: string): P
       const { readSheetMatrix } = await (fastPromise ??= import("./xlsx-fast"));
       matrix = readSheetMatrix(new Uint8Array(buf));
     } catch {
-      // cai para o leitor completo abaixo
+      // cai para o leitor completo
     }
     if (matrix?.length) return matrixToRows(matrix);
   }
