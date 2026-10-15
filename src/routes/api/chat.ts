@@ -19,7 +19,10 @@ const RequestBody = z.object({
 
 const textOf = (message: UIMessage) =>
   message.parts
-    .filter((part): part is Extract<(typeof message.parts)[number], { type: "text" }> => part.type === "text")
+    .filter(
+      (part): part is Extract<(typeof message.parts)[number], { type: "text" }> =>
+        part.type === "text",
+    )
     .map((part) => part.text)
     .join("")
     .trim();
@@ -32,8 +35,10 @@ const safeStreamError = (error: unknown) => {
   } catch {
     // The SDK can also expose an already-safe plain message.
   }
-  if (/credit|402/i.test(message)) return "Créditos de IA insuficientes. Adicione créditos nas configurações do workspace.";
-  if (/rate|429/i.test(message)) return "Muitas análises foram solicitadas. Aguarde um momento e tente novamente.";
+  if (/credit|402/i.test(message))
+    return "Créditos de IA insuficientes. Adicione créditos nas configurações do workspace.";
+  if (/rate|429/i.test(message))
+    return "Muitas análises foram solicitadas. Aguarde um momento e tente novamente.";
   return message || "Não foi possível concluir esta análise.";
 };
 
@@ -45,7 +50,9 @@ export const Route = createFileRoute("/api/chat")({
           const identity = await requireApprovedChatUser(request);
           const { getAiAvailability } = await import("@/lib/ai-status.server");
           if (!(await getAiAvailability()).available) {
-            return new Response("Análises com IA indisponíveis: créditos de IA esgotados.", { status: 402 });
+            return new Response("Análises com IA indisponíveis: créditos de IA esgotados.", {
+              status: 402,
+            });
           }
           const parsed = RequestBody.safeParse(await request.json());
           if (!parsed.success) return new Response("Solicitação inválida.", { status: 400 });
@@ -56,9 +63,12 @@ export const Route = createFileRoute("/api/chat")({
             .eq("id", parsed.data.id)
             .eq("user_id", identity.userId)
             .maybeSingle();
-          if (threadError || !thread) return new Response("Conversa não encontrada.", { status: 404 });
+          if (threadError || !thread)
+            return new Response("Conversa não encontrada.", { status: 404 });
 
-          const latest = [...parsed.data.messages].reverse().find((message) => message.role === "user");
+          const latest = [...parsed.data.messages]
+            .reverse()
+            .find((message) => message.role === "user");
           const question = latest ? textOf(latest) : "";
           if (!question) return new Response("Escreva uma pergunta.", { status: 400 });
 
@@ -67,7 +77,8 @@ export const Route = createFileRoute("/api/chat")({
             .select("role, content, created_at")
             .eq("thread_id", thread.id)
             .order("created_at", { ascending: true });
-          if (historyError) return new Response("Não foi possível carregar o histórico.", { status: 500 });
+          if (historyError)
+            return new Response("Não foi possível carregar o histórico.", { status: 500 });
 
           const { error: userMessageError } = await identity.supabase.from("ai_messages").insert({
             thread_id: thread.id,
@@ -75,19 +86,23 @@ export const Route = createFileRoute("/api/chat")({
             role: "user",
             content: question,
           });
-          if (userMessageError) return new Response("Não foi possível salvar sua pergunta.", { status: 500 });
+          if (userMessageError)
+            return new Response("Não foi possível salvar sua pergunta.", { status: 500 });
 
           const salesContext = await buildUserSalesContext(identity.userId, question);
-          const history: ModelMessage[] = (priorRows ?? []).slice(-30).flatMap((row): ModelMessage[] =>
-            row.role === "user" || row.role === "assistant"
-              ? [{ role: row.role, content: row.content }]
-              : [],
-          );
+          const history: ModelMessage[] = (priorRows ?? [])
+            .slice(-30)
+            .flatMap((row): ModelMessage[] =>
+              row.role === "user" || row.role === "assistant"
+                ? [{ role: row.role, content: row.content }]
+                : [],
+            );
           history.push({ role: "user", content: question });
 
           const geminiKey = process.env["GOOGLE_API_KEY"];
           const key = process.env["LOVABLE_API_KEY"];
-          if (!geminiKey && !key) return new Response("A análise por IA não está configurada.", { status: 500 });
+          if (!geminiKey && !key)
+            return new Response("A análise por IA não está configurada.", { status: 500 });
           const initialRunId = getLovableAiGatewayRunId(request);
           const runIdFetch = createLovableAiGatewayRunIdFetch(initialRunId);
           const lovable = createOpenAI({
@@ -110,6 +125,7 @@ export const Route = createFileRoute("/api/chat")({
               "Use somente o CONTEXTO DE DADOS fornecido. Não invente valores e diga quando algo não estiver disponível.",
               "Vendas incluem Mobility, Printer, Scanner e Software. Serviços são sempre uma categoria separada.",
               "Respeite rigorosamente os accounts, filtros e quarters do contexto atual do usuário.",
+              "Para identificar a maior venda dentro de um mês por Cliente Final, use maioresVendasMensaisPorCliente.maiorVendaMensal; informe cliente, Account, mês fiscal e vendasUSD. Não confunda o maior mês geral ou o ranking anual com esse resultado. Serviços e receita total têm máximos próprios; apresente todos os empates.",
               "Para perguntas sobre equipamentos ou SKUs de um cliente, use exclusivamente detalhamentoSkusPorCliente.",
               "Se o detalhamento estiver ambíguo, peça ao usuário que escolha exatamente um dos clientes listados; não some candidatos.",
               "Se estiver completo, apresente Cliente Final, Account e Quarters; depois liste todos os itens, sem limite, separando Vendas e Serviços em tabelas e finalize com subtotais e total geral.",
@@ -119,15 +135,17 @@ export const Route = createFileRoute("/api/chat")({
             ].join("\n\n"),
             messages: history,
             abortSignal: request.signal,
-            providerOptions: geminiKey ? {} : {
-              openai: {
-                forceReasoning: true,
-                reasoningEffort: "medium",
-                reasoningSummary: "auto",
-                store: false,
-                include: ["reasoning.encrypted_content"],
-              },
-            },
+            providerOptions: geminiKey
+              ? {}
+              : {
+                  openai: {
+                    forceReasoning: true,
+                    reasoningEffort: "medium",
+                    reasoningSummary: "auto",
+                    store: false,
+                    include: ["reasoning.encrypted_content"],
+                  },
+                },
           });
 
           const response = result.toUIMessageStreamResponse({
@@ -162,7 +180,9 @@ export const Route = createFileRoute("/api/chat")({
               ...(initialRunId ? { "X-Lovable-AIG-Run-ID": initialRunId } : {}),
             }),
           });
-          return withLovableAiGatewayRunIdHeader(response, runIdFetch);
+          // Google does not use the gateway fetch wrapper, so its run-ID
+          // promise can never settle. Return its stream directly.
+          return withLovableAiGatewayRunIdHeader(response, geminiKey ? undefined : runIdFetch);
         } catch (error) {
           if (error instanceof Response) return error;
           if (error instanceof DOMException && error.name === "AbortError") {

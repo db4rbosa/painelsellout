@@ -10,6 +10,7 @@ import {
 import { normalizePrefs, targetsForGroup } from "./prefs";
 import { buildAttainment, groupKey } from "./targets";
 import { buildCustomerSkuDetail } from "./customer-sku-detail";
+import { buildCustomerMonthlySales } from "./customer-monthly-sales";
 
 let workbookCache: { path: string; rows: SalesRow[] } | null = null;
 
@@ -114,6 +115,13 @@ export async function buildUserSalesContext(userId: string, question = "") {
     resumoPorQuarter: report.quarterLines,
     evolucaoMensal: report.monthlyLines,
     totais: report.totals,
+    maioresVendasMensaisPorCliente: buildCustomerMonthlySales(
+      scopedRows.filter(
+        (row) =>
+          prefs.selectedQuarters.includes(row.fiscalQuarter) &&
+          (accountsByQuarter[row.fiscalQuarter] ?? []).includes(row.account),
+      ),
+    ),
     detalhamentoSkusPorCliente,
     rankings: {
       linhasDeNegocio: topGroups(scopedRows, "lob"),
