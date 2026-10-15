@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Corrigir travamento da análise de IA e validar a pergunta de maior venda mensal por cliente
+- [x] Corrigir travamento da análise de IA e validar a pergunta de maior venda mensal por cliente; resposta e histórico confirmados com conta conectada, 30 testes passando
 
 - [x] Recuperar a última planilha com avisos detalhados, sem bloquear linhas válidas
 
