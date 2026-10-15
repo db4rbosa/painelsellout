@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Corrigir travamento da análise de IA e validar a pergunta de maior venda mensal por cliente
+
 - [x] Recuperar a última planilha com avisos detalhados, sem bloquear linhas válidas
 
 - [x] Ordenar metas por mês, quarter e ano

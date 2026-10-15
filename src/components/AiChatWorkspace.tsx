@@ -133,7 +133,13 @@ export function AiChatWorkspace({ activeThreadId }: { activeThreadId?: string })
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const refreshThreads = useCallback(async () => setThreads(await fetchThreads()), [fetchThreads]);
+  const refreshThreads = useCallback(async () => {
+    try {
+      setThreads(await fetchThreads());
+    } catch {
+      setError("Não foi possível atualizar a lista de conversas. Sua análise permanece aberta.");
+    }
+  }, [fetchThreads]);
   useEffect(() => {
     void refreshThreads().catch(() => setError("Não foi possível carregar as conversas."));
   }, [refreshThreads]);

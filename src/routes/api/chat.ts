@@ -162,7 +162,9 @@ export const Route = createFileRoute("/api/chat")({
               ...(initialRunId ? { "X-Lovable-AIG-Run-ID": initialRunId } : {}),
             }),
           });
-          return withLovableAiGatewayRunIdHeader(response, runIdFetch);
+           // Google does not use the gateway fetch wrapper, so its run-ID
+           // promise can never settle. Return its stream directly.
+           return geminiKey ? response : withLovableAiGatewayRunIdHeader(response, runIdFetch);
         } catch (error) {
           if (error instanceof Response) return error;
           if (error instanceof DOMException && error.name === "AbortError") {
