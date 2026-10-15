@@ -22,3 +22,5 @@
 - Use the same validated workbook parser in the browser and AI context; follow workbook relationship order and scan all rows so blank formatting cannot silently truncate sales.
 - Index normalized Line of Business memberships before attainment aggregation to avoid repeated bucket scans while preserving full contribution to overlapping buckets.
 - Parse browser imports in a dedicated disposable module worker with a transferable buffer; retain the same pure buffer parser on the server to keep the interface responsive without divergent validation.
+
+- Return structured row diagnostics from the shared workbook parser, preserve original Excel row numbers, and exclude invalid transactions without discarding valid ones; retain array-returning wrappers for existing calculation callers.
