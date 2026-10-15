@@ -75,7 +75,9 @@ export const parseSalesNumber = (v: unknown, fieldName?: string): number => {
     if (cleaned && Number.isFinite(n)) return negative ? -n : n;
   }
   const displayVal = String(v).slice(0, 30);
-  throw new Error(`${fieldName ? `O campo "${fieldName}"` : "Valor"} contém dado inválido: "${displayVal}"`);
+  throw new Error(
+    `${fieldName ? `O campo "${fieldName}"` : "Valor"} contém dado inválido: "${displayVal}"`,
+  );
 };
 const num = parseSalesNumber;
 
@@ -87,7 +89,11 @@ const str = (v: unknown): string => {
 
 type RawRow = Record<string, unknown>;
 export type ImportIssue = { row: number; field: string; value: string; reason: string };
-export type WorkbookImportResult = { rows: SalesRow[]; issues: ImportIssue[]; excludedRows: number };
+export type WorkbookImportResult = {
+  rows: SalesRow[];
+  issues: ImportIssue[];
+  excludedRows: number;
+};
 
 export function normalizeRows(rawRows: RawRow[]): SalesRow[] {
   const headers = [...new Set(rawRows.flatMap((row) => Object.keys(row)))];
@@ -108,7 +114,9 @@ export function matrixToRows(matrix: unknown[][]): SalesRow[] {
   return matrixToImportResult(matrix).rows;
 }
 
-export function matrixToImportResult(matrix: unknown[][] & { sourceRows?: number[] }): WorkbookImportResult {
+export function matrixToImportResult(
+  matrix: unknown[][] & { sourceRows?: number[] },
+): WorkbookImportResult {
   if (!matrix.length) return { rows: [], issues: [], excludedRows: 0 };
 
   const idx = new Map<string, number>();
@@ -164,40 +172,86 @@ export function matrixToImportResult(matrix: unknown[][] & { sourceRows?: number
   for (let i = 1; i < matrix.length; i++) {
     const r = matrix[i];
     if (!r || !r.some((value) => value !== null && value !== undefined && value !== "")) continue;
-    const at = (c: number): unknown => c >= 0 ? r[c] : undefined;
+    const at = (c: number): unknown => (c >= 0 ? r[c] : undefined);
     if (at(cMonth) === null || at(cMonth) === undefined || at(cMonth) === "") continue;
     const issueStart = issues.length;
-    const readNumber = (column: number, field: string, valid: (v: number) => boolean = () => true,
-      reason = "Informe um número válido; erros de célula ou fórmulas sem resultado não podem ser calculados.") => {
+    const readNumber = (
+      column: number,
+      field: string,
+      valid: (v: number) => boolean = () => true,
+      reason = "Informe um número válido; erros de célula ou fórmulas sem resultado não podem ser calculados.",
+    ) => {
       const raw = at(column);
       try {
         const value = num(raw);
         if (valid(value)) return value;
-      } catch { /* Preserve the original invalid value in the diagnostic. */ }
-      issues.push({ row: matrix.sourceRows?.[i] ?? i + 1, field, value: String(raw ?? "(vazio)"), reason });
+      } catch {
+        /* Preserve the original invalid value in the diagnostic. */
+      }
+      issues.push({
+        row: matrix.sourceRows?.[i] ?? i + 1,
+        field,
+        value: String(raw ?? "(vazio)"),
+        reason,
+      });
       return 0;
     };
-    const month = readNumber(cMonth, "Fiscal Month", v => Number.isInteger(v) && v >= 1 && v <= 12, "O mês fiscal deve ser um inteiro de 1 a 12.");
-    const year = readNumber(cYear, "Fiscal Year", v => Number.isInteger(v) && v > 0, "O ano fiscal deve ser um inteiro positivo.");
-    const quarter = at(cQuarter) === null || at(cQuarter) === undefined || at(cQuarter) === ""
-      ? Math.ceil(month / 3)
-      : readNumber(cQuarter, "Fiscal Quarter", v => Number.isInteger(v) && v >= 1 && v <= 4, "O quarter fiscal deve ser um inteiro de 1 a 4.");
+    const month = readNumber(
+      cMonth,
+      "Fiscal Month",
+      (v) => Number.isInteger(v) && v >= 1 && v <= 12,
+      "O mês fiscal deve ser um inteiro de 1 a 12.",
+    );
+    const year = readNumber(
+      cYear,
+      "Fiscal Year",
+      (v) => Number.isInteger(v) && v > 0,
+      "O ano fiscal deve ser um inteiro positivo.",
+    );
+    const quarter =
+      at(cQuarter) === null || at(cQuarter) === undefined || at(cQuarter) === ""
+        ? Math.ceil(month / 3)
+        : readNumber(
+            cQuarter,
+            "Fiscal Quarter",
+            (v) => Number.isInteger(v) && v >= 1 && v <= 4,
+            "O quarter fiscal deve ser um inteiro de 1 a 4.",
+          );
     const week = readNumber(cWeek, "Fiscal Week");
     const revenue = readNumber(cRevenue, "Extended Net Price USD");
     const quantity = readNumber(cQty, "Quantity");
-    if (issues.length > issueStart) { excludedRows++; continue; }
+    if (issues.length > issueStart) {
+      excludedRows++;
+      continue;
+    }
     years.add(year);
     const label = str(at(cMonths));
     out.push({
-      fiscalYear: year, fiscalQuarter: quarter, fiscalMonth: month, fiscalWeek: week,
+      fiscalYear: year,
+      fiscalQuarter: quarter,
+      fiscalMonth: month,
+      fiscalWeek: week,
       monthLabel: label !== "—" ? label : (MONTH_LABELS[month - 1] ?? "—"),
-      lob: str(at(cLob)), disti: str(at(cDisti)), reseller: str(at(cReseller)),
-      billTo: str(at(cBillTo)), shipTo: str(at(cShipTo)), endUser: str(at(cEndUser)),
-      sku: str(at(cSku)), cbm: str(at(cCbm)), account: str(at(cAccount)),
-      segment: str(at(cSegment)), state: str(at(cState)), city: str(at(cCity)), revenue, quantity,
+      lob: str(at(cLob)),
+      disti: str(at(cDisti)),
+      reseller: str(at(cReseller)),
+      billTo: str(at(cBillTo)),
+      shipTo: str(at(cShipTo)),
+      endUser: str(at(cEndUser)),
+      sku: str(at(cSku)),
+      cbm: str(at(cCbm)),
+      account: str(at(cAccount)),
+      segment: str(at(cSegment)),
+      state: str(at(cState)),
+      city: str(at(cCity)),
+      revenue,
+      quantity,
     });
   }
-  if (years.size > 1) throw new Error("A planilha contém mais de um ano fiscal. Importe um ano por vez para não misturar as metas anuais.");
+  if (years.size > 1)
+    throw new Error(
+      "A planilha contém mais de um ano fiscal. Importe um ano por vez para não misturar as metas anuais.",
+    );
   return { rows: out, issues, excludedRows };
 }
 
@@ -207,7 +261,9 @@ async function parseWithXlsx(buf: ArrayBuffer): Promise<WorkbookImportResult> {
   const name = wb.SheetNames[0];
   const sheet = name ? wb.Sheets[name] : undefined;
   if (!sheet) throw new Error("A planilha não contém abas.");
-  return matrixToImportResult(XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null, blankrows: true }));
+  return matrixToImportResult(
+    XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null, blankrows: true }),
+  );
 }
 
 export async function parseWorkbook(file: File): Promise<SalesRow[]> {
@@ -243,7 +299,10 @@ export async function parseWorkbookDetailed(file: File): Promise<WorkbookImportR
 export async function parseWorkbookBuffer(buf: ArrayBuffer, fileName: string): Promise<SalesRow[]> {
   return (await parseWorkbookBufferDetailed(buf, fileName)).rows;
 }
-export async function parseWorkbookBufferDetailed(buf: ArrayBuffer, fileName: string): Promise<WorkbookImportResult> {
+export async function parseWorkbookBufferDetailed(
+  buf: ArrayBuffer,
+  fileName: string,
+): Promise<WorkbookImportResult> {
   const isXlsx = /\.xlsx$/i.test(fileName);
 
   if (isXlsx) {

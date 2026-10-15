@@ -51,8 +51,7 @@ export async function buildUserSalesContext(userId: string, question = "") {
       .from("sales-workbooks")
       .download(workbook.storage_path);
     if (error || !data) throw new Error("Não foi possível ler a planilha atual.");
-    const result = await parseWorkbookBuffer(await data.arrayBuffer(), workbook.file_name);
-    rows = result.rows;
+    rows = await parseWorkbookBuffer(await data.arrayBuffer(), workbook.file_name);
     workbookCache = { path: workbook.storage_path, rows };
   }
 

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { zipSync, strToU8 } from "fflate";
-import { buildSeries, matrixToRows, parseSalesNumber, parseWorkbookBuffer } from "./sales-data";
+import {
+  buildSeries,
+  matrixToRows,
+  matrixToImportResult,
+  parseSalesNumber,
+  parseWorkbookBuffer,
+  parseWorkbookBufferDetailed,
+} from "./sales-data";
 import { readSheetMatrix } from "./xlsx-fast";
 import { buildAttainment } from "./targets";
 
@@ -50,20 +57,63 @@ describe("sales import integrity", () => {
     expect(() => parseSalesNumber("#VALUE!")).toThrow());
   it("rejects missing required columns", () =>
     expect(() => matrixToRows([["Fiscal Month"], [1]])).toThrow("Colunas obrigatórias"));
-  it("rejects invalid months", () =>
-    expect(() => matrixToRows([headers, [2026, 13, 1, "Account", "Service", 10, 1]])).toThrow(
-      "Mês fiscal",
-    ));
+  it("imports valid rows despite months 13–20 and reports exact invalid values", () => {
+    const result = matrixToImportResult([
+      ...matrix(),
+      ...Array.from({ length: 8 }, (_, i) => [2026, i + 13, 1, "Account", "Service", 10, 1]),
+    ]);
+    expect(result.rows.map((r) => r.revenue)).toEqual([-1234.56]);
+    expect(result.excludedRows).toBe(8);
+    expect(result.issues.map(({ row, field, value }) => ({ row, field, value }))).toEqual(
+      Array.from({ length: 8 }, (_, i) => ({
+        row: i + 3,
+        field: "Fiscal Month",
+        value: String(i + 13),
+      })),
+    );
+  });
   it("ignores summary rows without a fiscal month", () =>
     expect(matrixToRows([...matrix(), [null, null, null, "Total", null, 100, 1]])).toHaveLength(1));
   it("preserves the explicit fiscal quarter rather than assuming calendar quarters", () =>
     expect(
       matrixToRows([headers, [2026, 1, 2, "Account", "Service", 10, 1]])[0]?.fiscalQuarter,
     ).toBe(2));
-  it("rejects quarters outside the four-quarter range", () =>
-    expect(() => matrixToRows([headers, [2026, 1, 5, "Account", "Service", 10, 1]])).toThrow(
-      "Quarter fiscal",
-    ));
+  it("excludes invalid quarters without blocking other sales", () => {
+    const result = matrixToImportResult([...matrix(), [2026, 1, 5, "Account", "Service", 10, 1]]);
+    expect(result.rows).toHaveLength(1);
+    expect(result.issues[0]).toMatchObject({ row: 3, field: "Fiscal Quarter", value: "5" });
+  });
+  it("reports numeric cell errors without inventing zero-valued sales", () => {
+    const result = matrixToImportResult([
+      ...matrix(),
+      [2026, 1, 1, "Account", "Service", "#VALUE!", 1],
+    ]);
+    expect(result.rows.map((r) => r.revenue)).toEqual([-1234.56]);
+    expect(result.issues[0]).toMatchObject({
+      row: 3,
+      field: "Extended Net Price USD",
+      value: "#VALUE!",
+    });
+  });
+  it("retains Excel row numbers after formatting gaps when recovering workbooks", async () => {
+    const row = (n: number, values: unknown[]) =>
+      `<row r="${n}">` +
+      values.map((v, i) => cell(`${String.fromCharCode(65 + i)}${n}`, String(v))).join("") +
+      "</row>";
+    const sheet =
+      "<worksheet><sheetData>" +
+      row(1, headers) +
+      row(24996, [2026, 13, 1, "Account", "Service", 10, 1]) +
+      row(25000, [2026, 1, 1, "Account", "Service", -12.5, 2]) +
+      "</sheetData></worksheet>";
+    const result = await parseWorkbookBufferDetailed(
+      Uint8Array.from(workbook(sheet)).buffer,
+      "saved.xlsx",
+    );
+    expect(result.rows.map((r) => r.revenue)).toEqual([-12.5]);
+    expect(result.issues[0]?.row).toBe(24996);
+    expect(result.excludedRows).toBe(1);
+  });
   it("does not combine multiple fiscal years into one annual target", () =>
     expect(() => matrixToRows([...matrix(), [2025, 1, 1, "Account", "Service", 10, 1]])).toThrow(
       "mais de um ano",
@@ -92,7 +142,7 @@ describe("sales import integrity", () => {
       '<row r="202">' +
       cell("A202", "After") +
       "</row></sheetData></worksheet>";
-    expect(readSheetMatrix(workbook(sheet))).toEqual([["Before"], ["After"]]);
+    expect([...readSheetMatrix(workbook(sheet))]).toEqual([["Before"], ["After"]]);
   });
   it("decodes hex entities without double-unescaping text", () => {
     const sheet =

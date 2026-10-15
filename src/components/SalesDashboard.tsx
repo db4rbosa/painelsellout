@@ -50,7 +50,7 @@ import {
   emptyFilters,
   filterRows,
   fmtUSD,
-  parseWorkbook,
+  parseWorkbookDetailed,
   preloadWorkbookParser,
   sum,
   uniqueValues,
@@ -59,6 +59,7 @@ import {
   type Granularity,
   type SalesRow,
   type SeriesPoint,
+  type WorkbookImportResult,
 } from "@/lib/sales-data";
 import {
   buildAttainment,
@@ -100,7 +101,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [warnings, setWarnings] = useState<string[]>([]);
+  const [importResult, setImportResult] = useState<WorkbookImportResult | null>(null);
   const [ready, setReady] = useState(false);
   const [savingState, setSavingState] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
@@ -184,12 +185,12 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           const res = await fetch(state.workbook.url);
           if (!res.ok) throw new Error("Não foi possível baixar a última planilha.");
           const blob = await res.blob();
-          const { rows: parsedRows, warnings: parsedWarnings } = await parseWorkbook(
+          const parsed = await parseWorkbookDetailed(
             new File([blob], state.workbook.fileName, { type: blob.type }),
           );
-          if (!cancelled && parsedRows.length) {
-            setRows(parsedRows);
-            setWarnings(parsedWarnings);
+          if (!cancelled) {
+            setRows(parsed.rows);
+            setImportResult(parsed);
           }
         }
       } catch (error) {
@@ -446,14 +447,15 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     if (!file) return;
     setLoading(true);
     setError("");
-    setWarnings([]);
+
     await new Promise<void>((r) => requestAnimationFrame(() => r()));
     try {
-      const { rows: parsedRows, warnings: parsedWarnings } = await parseWorkbook(file);
-      if (!parsedRows.length) throw new Error("Nenhuma linha válida encontrada na planilha.");
+      const parsed = await parseWorkbookDetailed(file);
+      setImportResult(parsed);
+      if (!parsed.rows.length)
+        throw new Error("Nenhuma linha válida encontrada. A planilha anterior foi mantida.");
       // Mantém a configuração atual: tudo é recalculado com os filtros e metas já salvos.
-      setRows(parsedRows);
-      setWarnings(parsedWarnings);
+      setRows(parsed.rows);
       setFileName(file.name);
 
       const upload = await prepareUpload({ data: { fileName: file.name } });
@@ -489,7 +491,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const handlePdfExport = async () => {
     setExportingPdf(true);
     setError("");
-    setWarnings([]);
+
     try {
       await downloadReportPdf(report);
     } catch {
@@ -502,7 +504,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const handleExcelExport = async () => {
     setExportingExcel(true);
     setError("");
-    setWarnings([]);
+
     try {
       await downloadReportExcel(report, scopedRows, accountsByQuarter);
     } catch {
@@ -640,17 +642,54 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
         </div>
       ) : null}
 
-      {warnings.length > 0 ? (
-        <div className="mb-6 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-          <div className="flex items-center gap-2 font-semibold mb-1">
-            <AlertTriangle className="size-4" /> 
-            Importação concluída com {warnings.length} aviso(s)
-          </div>
-          <ul className="list-disc list-inside space-y-0.5 opacity-90 text-xs">
-            {warnings.slice(0, 5).map((w, i) => <li key={i}>{w}</li>)}
-            {warnings.length > 5 && <li>E mais {warnings.length - 5} avisos...</li>}
-          </ul>
-        </div>
+      {importResult?.issues.length ? (
+        <section
+          aria-label="Avisos da importação"
+          className="mb-6 rounded-md border border-border bg-muted/40 px-4 py-4 text-sm"
+        >
+          <h2 className="flex items-center gap-2 font-semibold">
+            <AlertTriangle className="size-4 shrink-0" />
+            Planilha carregada com avisos
+          </h2>
+          <p className="mt-1 text-muted-foreground">
+            {importResult.rows.length.toLocaleString("pt-BR")} linhas válidas carregadas.{" "}
+            {importResult.excludedRows.toLocaleString("pt-BR")} linhas com dados inválidos ficaram
+            fora dos cálculos; o arquivo original foi preservado.
+          </p>
+          <p className="mt-2 break-words">
+            Linha {importResult.issues[0]?.row} · {importResult.issues[0]?.field} = “
+            {importResult.issues[0]?.value}”. {importResult.issues[0]?.reason}
+          </p>
+          <details className="mt-3">
+            <summary className="cursor-pointer font-medium">
+              Ver todos os erros ({importResult.issues.length.toLocaleString("pt-BR")})
+            </summary>
+            <div className="mt-3 max-h-72 overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Linha no Excel</TableHead>
+                    <TableHead>Campo</TableHead>
+                    <TableHead>Valor encontrado</TableHead>
+                    <TableHead>Erro</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {importResult.issues.map((issue, index) => (
+                    <TableRow key={`${issue.row}-${issue.field}-${index}`}>
+                      <TableCell>{issue.row}</TableCell>
+                      <TableCell>{issue.field}</TableCell>
+                      <TableCell className="max-w-48 whitespace-normal break-words">
+                        {issue.value}
+                      </TableCell>
+                      <TableCell className="min-w-52 whitespace-normal">{issue.reason}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </details>
+        </section>
       ) : null}
 
       {!rows.length ? (
