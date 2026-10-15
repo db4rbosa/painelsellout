@@ -24,3 +24,5 @@
 - Parse browser imports in a dedicated disposable module worker with a transferable buffer; retain the same pure buffer parser on the server to keep the interface responsive without divergent validation.
 
 - Return structured row diagnostics from the shared workbook parser, preserve original Excel row numbers, and exclude invalid transactions without discarding valid ones; retain array-returning wrappers for existing calculation callers.
+- Attach gateway correlation headers only to gateway-backed streams; direct providers bypass run-ID waiting to prevent unresolved responses.
+- Calculate monthly customer maxima from scoped transactions grouped by customer, Account and fiscal month, with sales and services separate, so annual rankings cannot stand in for monthly comparisons.

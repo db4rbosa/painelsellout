@@ -110,6 +110,7 @@ export const Route = createFileRoute("/api/chat")({
               "Use somente o CONTEXTO DE DADOS fornecido. Não invente valores e diga quando algo não estiver disponível.",
               "Vendas incluem Mobility, Printer, Scanner e Software. Serviços são sempre uma categoria separada.",
               "Respeite rigorosamente os accounts, filtros e quarters do contexto atual do usuário.",
+              "Para identificar a maior venda dentro de um mês por Cliente Final, use maioresVendasMensaisPorCliente.maiorVendaMensal; informe cliente, Account, mês fiscal e vendasUSD. Não confunda o maior mês geral ou o ranking anual com esse resultado. Serviços e receita total têm máximos próprios; apresente todos os empates.",
               "Para perguntas sobre equipamentos ou SKUs de um cliente, use exclusivamente detalhamentoSkusPorCliente.",
               "Se o detalhamento estiver ambíguo, peça ao usuário que escolha exatamente um dos clientes listados; não some candidatos.",
               "Se estiver completo, apresente Cliente Final, Account e Quarters; depois liste todos os itens, sem limite, separando Vendas e Serviços em tabelas e finalize com subtotais e total geral.",
@@ -164,7 +165,7 @@ export const Route = createFileRoute("/api/chat")({
           });
            // Google does not use the gateway fetch wrapper, so its run-ID
            // promise can never settle. Return its stream directly.
-           return geminiKey ? response : withLovableAiGatewayRunIdHeader(response, runIdFetch);
+           return withLovableAiGatewayRunIdHeader(response, geminiKey ? undefined : runIdFetch);
         } catch (error) {
           if (error instanceof Response) return error;
           if (error instanceof DOMException && error.name === "AbortError") {
