@@ -2,7 +2,9 @@ import { expect, it } from "vitest";
 import { withLovableAiGatewayRunIdHeader } from "./ai-gateway.server";
 
 it("returns a direct provider stream without waiting for a gateway run ID", async () => {
-  const response = new Response("data: first delta\n\n", { headers: { "Content-Type": "text/event-stream" } });
+  const response = new Response("data: first delta\n\n", {
+    headers: { "Content-Type": "text/event-stream" },
+  });
   const result = await withLovableAiGatewayRunIdHeader(response, undefined);
   expect(result).toBe(response);
   expect(await result.text()).toBe("data: first delta\n\n");

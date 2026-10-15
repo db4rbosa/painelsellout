@@ -115,10 +115,13 @@ export async function buildUserSalesContext(userId: string, question = "") {
     resumoPorQuarter: report.quarterLines,
     evolucaoMensal: report.monthlyLines,
     totais: report.totals,
-    maioresVendasMensaisPorCliente: buildCustomerMonthlySales(scopedRows.filter((row) =>
-      prefs.selectedQuarters.includes(row.fiscalQuarter) &&
-      (accountsByQuarter[row.fiscalQuarter] ?? []).includes(row.account),
-    )),
+    maioresVendasMensaisPorCliente: buildCustomerMonthlySales(
+      scopedRows.filter(
+        (row) =>
+          prefs.selectedQuarters.includes(row.fiscalQuarter) &&
+          (accountsByQuarter[row.fiscalQuarter] ?? []).includes(row.account),
+      ),
+    ),
     detalhamentoSkusPorCliente,
     rankings: {
       linhasDeNegocio: topGroups(scopedRows, "lob"),

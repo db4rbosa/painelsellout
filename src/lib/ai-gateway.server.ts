@@ -94,10 +94,12 @@ export function getLovableAiGatewayResponseHeaders(
 
 export async function withLovableAiGatewayRunIdHeader(
   response: Response,
-  gateway: {
-    getRunId: () => string | undefined;
-    waitForRunId: () => Promise<string | undefined>;
-  } | undefined,
+  gateway:
+    | {
+        getRunId: () => string | undefined;
+        waitForRunId: () => Promise<string | undefined>;
+      }
+    | undefined,
   init?: HeadersInit,
 ) {
   // Direct providers never issue a Lovable run ID; waiting for it hangs forever.
