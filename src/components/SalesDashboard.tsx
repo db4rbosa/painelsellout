@@ -42,6 +42,9 @@ import { TargetPanel } from "@/components/TargetPanel";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import { GroupDetailsDialog, type GroupDetailSelection } from "@/components/GroupDetailsDialog";
 import { SystemSettingsSheet } from "@/components/SystemSettingsSheet";
+import { ExecutiveHighlights } from "@/components/ExecutiveHighlights";
+import { ImportHistoryDialog } from "@/components/ImportHistoryDialog";
+import { buildExecutiveHighlights } from "@/lib/executive-highlights";
 import { defaultCompensation, type CompensationSettings } from "@/lib/compensation";
 import {
   DIMENSIONS,
@@ -562,6 +565,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
             onCompensationChange={setCompensation}
             onSave={saveSettingsNow}
           />
+          <ImportHistoryDialog triggerClassName={headerActionClass} />
           {rows.length ? (
             <>
               <Button
@@ -759,6 +763,8 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
               </Card>
             ))}
           </div>
+
+          <ExecutiveHighlights data={highlights} />
 
           <Tabs defaultValue="evolucao">
             <TabsList>
