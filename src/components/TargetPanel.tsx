@@ -21,6 +21,7 @@ import {
   compensationMoney,
   type CompensationResult,
 } from "@/components/CompensationPanel";
+import { GoalSimulator } from "@/components/GoalSimulator";
 
 const QUARTERS = [1, 2, 3, 4] as const;
 const toneFor = (value: number | null) =>
@@ -165,10 +166,11 @@ export function TargetPanel({
       </section>
 
       <Tabs defaultValue="months" className="space-y-5">
-        <TabsList className="grid h-11 w-full grid-cols-3 sm:max-w-lg">
+        <TabsList className="grid h-11 w-full grid-cols-4 sm:max-w-2xl">
           <TabsTrigger value="months">Por mês</TabsTrigger>
           <TabsTrigger value="quarters">Por quarter</TabsTrigger>
           <TabsTrigger value="annual">Ano completo</TabsTrigger>
+          <TabsTrigger value="simulator">Simulador</TabsTrigger>
         </TabsList>
         <TabsContent value="quarters" className="space-y-5">
           <CompensationPanel result={payments} selectedQuarters={selectedQuarters} />
