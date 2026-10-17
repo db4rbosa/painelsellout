@@ -44,7 +44,7 @@ const actualSales = (
       const data = annualAttainment.buckets.find((item) => item.id === bucket.id);
       return [
         bucket.id,
-        [0, 1, 2, 3].map((index) => data?.quarters[index]?.actual ?? 0),
+        [0, 1, 2, 3].map((index) => data?.quarters[index]?.actual ?? 0) as QuarterValues,
       ];
     }),
   );
