@@ -306,6 +306,14 @@ export function TargetPanel({
             275%. Projeção anual não somada aos pagamentos trimestrais.
           </p>
         </TabsContent>
+        <TabsContent value="simulator" className="space-y-5">
+          <GoalSimulator
+            buckets={buckets}
+            targets={targets}
+            compensation={compensation}
+            annualAttainment={annualAttainment}
+          />
+        </TabsContent>
         <TabsContent value="months" className="space-y-4">
           <h2 className="text-base font-semibold">Atingimento mês a mês</h2>
           <div className="grid items-start gap-5 sm:grid-cols-2 xl:grid-cols-3">
