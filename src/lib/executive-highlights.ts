@@ -66,7 +66,7 @@ export function buildExecutiveHighlights(
     gap: Math.max(0, target - actual),
     health: goalHealth(ratio),
     leader: ranked[0] ? { name: ranked[0].name, attainment: ranked[0].attainment } : null,
-    laggard: ranked.length > 1 ? ranked[ranked.length - 1] : null,
+    laggard: ranked.length > 1 ? (ranked[ranked.length - 1] ?? null) : null,
     topCustomer: top
       ? { ...top, share: revenue !== 0 ? top.revenue / revenue : 0 }
       : null,

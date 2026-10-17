@@ -102,7 +102,8 @@ export type ImportHistoryEntry = ImportStats & {
   createdAt: string;
 };
 
-const safeInt = (v: unknown) => (Number.isFinite(Number(v)) ? Math.max(0, Math.trunc(Number(v))) : 0);
+const safeInt = (v: unknown) =>
+  Number.isFinite(Number(v)) ? Math.max(0, Math.trunc(Number(v))) : 0;
 
 export const listImportHistory = createServerFn({ method: "GET" }).handler(async () => {
   const { requireIdentity } = await import("./identity.server");
@@ -116,19 +117,17 @@ export const listImportHistory = createServerFn({ method: "GET" }).handler(async
     .order("created_at", { ascending: false })
     .limit(100);
   if (error) throw new Error("Não foi possível carregar o histórico de importações.");
-  return (data ?? []).map(
-    (r): ImportHistoryEntry => ({
-      id: r.id,
-      fileName: r.file_name,
-      fileSize: Number(r.file_size ?? 0),
-      uploadedBy: r.uploaded_by,
-      createdAt: r.created_at,
-      validRows: r.valid_rows,
-      excludedRows: r.excluded_rows,
-      issueCount: r.issue_count,
-      totalRevenue: Number(r.total_revenue ?? 0),
-    }),
-  );
+  return (data ?? []).map((r): ImportHistoryEntry => ({
+    id: r.id,
+    fileName: r.file_name,
+    fileSize: Number(r.file_size ?? 0),
+    uploadedBy: r.uploaded_by,
+    createdAt: r.created_at,
+    validRows: r.valid_rows,
+    excludedRows: r.excluded_rows,
+    issueCount: r.issue_count,
+    totalRevenue: Number(r.total_revenue ?? 0),
+  }));
 });
 
 export const registerWorkbook = createServerFn({ method: "POST" })

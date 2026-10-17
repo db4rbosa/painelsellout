@@ -7,7 +7,10 @@ import type { ExecutiveHighlights as Highlights, GoalHealth } from "@/lib/execut
 const pct = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 }).format(v);
 
-const HEALTH: Record<GoalHealth, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+const HEALTH: Record<
+  GoalHealth,
+  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+> = {
   above: { label: "Superando", variant: "default" },
   onTrack: { label: "No ritmo", variant: "secondary" },
   attention: { label: "Atenção", variant: "destructive" },
