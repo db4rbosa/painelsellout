@@ -42,6 +42,9 @@ import { TargetPanel } from "@/components/TargetPanel";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import { GroupDetailsDialog, type GroupDetailSelection } from "@/components/GroupDetailsDialog";
 import { SystemSettingsSheet } from "@/components/SystemSettingsSheet";
+import { ExecutiveHighlights } from "@/components/ExecutiveHighlights";
+import { ImportHistoryDialog } from "@/components/ImportHistoryDialog";
+import { buildExecutiveHighlights } from "@/lib/executive-highlights";
 import { defaultCompensation, type CompensationSettings } from "@/lib/compensation";
 import {
   DIMENSIONS,
@@ -442,6 +445,10 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   }, [attainment]);
 
   const totalRevenue = useMemo(() => sum(scopedRows), [scopedRows]);
+  const highlights = useMemo(
+    () => buildExecutiveHighlights(scopedRows, attainment),
+    [scopedRows, attainment],
+  );
   const totalQty = useMemo(() => sum(scopedRows, "quantity"), [scopedRows]);
   const handleFile = async (file?: File | null) => {
     if (!file) return;
@@ -464,7 +471,17 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
         .uploadToSignedUrl(upload.path, upload.token, file);
       if (uploadError) throw new Error("A planilha foi lida, mas não pôde ser salva na nuvem.");
       await saveWorkbook({
-        data: { path: upload.path, fileName: file.name, fileSize: file.size },
+        data: {
+          path: upload.path,
+          fileName: file.name,
+          fileSize: file.size,
+          stats: {
+            validRows: parsed.rows.length,
+            excludedRows: parsed.excludedRows,
+            issueCount: parsed.issues.length,
+            totalRevenue: sum(parsed.rows),
+          },
+        },
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível ler o arquivo.");
@@ -548,6 +565,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
             onCompensationChange={setCompensation}
             onSave={saveSettingsNow}
           />
+          <ImportHistoryDialog triggerClassName={headerActionClass} />
           {rows.length ? (
             <>
               <Button
@@ -745,6 +763,8 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
               </Card>
             ))}
           </div>
+
+          <ExecutiveHighlights data={highlights} />
 
           <Tabs defaultValue="evolucao">
             <TabsList>

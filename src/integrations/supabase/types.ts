@@ -142,6 +142,42 @@ export type Database = {
         }
         Relationships: []
       }
+      workbook_imports: {
+        Row: {
+          created_at: string
+          excluded_rows: number
+          file_name: string
+          file_size: number
+          id: string
+          issue_count: number
+          total_revenue: number
+          uploaded_by: string
+          valid_rows: number
+        }
+        Insert: {
+          created_at?: string
+          excluded_rows?: number
+          file_name: string
+          file_size?: number
+          id?: string
+          issue_count?: number
+          total_revenue?: number
+          uploaded_by?: string
+          valid_rows?: number
+        }
+        Update: {
+          created_at?: string
+          excluded_rows?: number
+          file_name?: string
+          file_size?: number
+          id?: string
+          issue_count?: number
+          total_revenue?: number
+          uploaded_by?: string
+          valid_rows?: number
+        }
+        Relationships: []
+      }
       workbooks: {
         Row: {
           created_at: string

@@ -87,8 +87,53 @@ export const createWorkbookUpload = createServerFn({ method: "POST" })
     return { path: signed.path, token: signed.token, bucket: BUCKET };
   });
 
+export type ImportStats = {
+  validRows: number;
+  excludedRows: number;
+  issueCount: number;
+  totalRevenue: number;
+};
+
+export type ImportHistoryEntry = ImportStats & {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  uploadedBy: string;
+  createdAt: string;
+};
+
+const safeInt = (v: unknown) =>
+  Number.isFinite(Number(v)) ? Math.max(0, Math.trunc(Number(v))) : 0;
+
+export const listImportHistory = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireIdentity } = await import("./identity.server");
+  await requireIdentity();
+  const { setResponseHeader } = await import("@tanstack/react-start/server");
+  setResponseHeader("Cache-Control", "private, no-store");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("workbook_imports")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw new Error("Não foi possível carregar o histórico de importações.");
+  return (data ?? []).map((r): ImportHistoryEntry => ({
+    id: r.id,
+    fileName: r.file_name,
+    fileSize: Number(r.file_size ?? 0),
+    uploadedBy: r.uploaded_by,
+    createdAt: r.created_at,
+    validRows: r.valid_rows,
+    excludedRows: r.excluded_rows,
+    issueCount: r.issue_count,
+    totalRevenue: Number(r.total_revenue ?? 0),
+  }));
+});
+
 export const registerWorkbook = createServerFn({ method: "POST" })
-  .inputValidator((data: { path: string; fileName: string; fileSize: number }) => data)
+  .inputValidator(
+    (data: { path: string; fileName: string; fileSize: number; stats?: ImportStats }) => data,
+  )
   .handler(async ({ data }) => {
     const { requireIdentity } = await import("./identity.server");
     const identity = await requireIdentity();
@@ -96,13 +141,25 @@ export const registerWorkbook = createServerFn({ method: "POST" })
 
     const { data: previous } = await supabaseAdmin.from("workbooks").select("id, storage_path");
 
+    const uploadedBy = identity.name || identity.email;
     const { error } = await supabaseAdmin.from("workbooks").insert({
       file_name: data.fileName,
       file_size: data.fileSize,
       storage_path: data.path,
-      uploaded_by: identity.name || identity.email,
+      uploaded_by: uploadedBy,
     });
     if (error) throw new Error("Não foi possível registrar a planilha.");
+
+    const revenue = Number(data.stats?.totalRevenue);
+    await supabaseAdmin.from("workbook_imports").insert({
+      file_name: data.fileName.slice(0, 255),
+      file_size: safeInt(data.fileSize),
+      uploaded_by: uploadedBy,
+      valid_rows: safeInt(data.stats?.validRows),
+      excluded_rows: safeInt(data.stats?.excludedRows),
+      issue_count: safeInt(data.stats?.issueCount),
+      total_revenue: Number.isFinite(revenue) ? revenue : 0,
+    });
 
     const stale = (previous ?? []).filter((p) => p.storage_path !== data.path);
     if (stale.length) {
