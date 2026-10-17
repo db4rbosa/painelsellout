@@ -166,11 +166,19 @@ export function TargetPanel({
       </section>
 
       <Tabs defaultValue="months" className="space-y-5">
-        <TabsList className="grid h-11 w-full grid-cols-4 sm:max-w-2xl">
-          <TabsTrigger value="months">Por mês</TabsTrigger>
-          <TabsTrigger value="quarters">Por quarter</TabsTrigger>
-          <TabsTrigger value="annual">Ano completo</TabsTrigger>
-          <TabsTrigger value="simulator">Simulador</TabsTrigger>
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:h-11 sm:max-w-2xl sm:grid-cols-4">
+          <TabsTrigger value="months" className="whitespace-normal">
+            Por mês
+          </TabsTrigger>
+          <TabsTrigger value="quarters" className="whitespace-normal">
+            Por quarter
+          </TabsTrigger>
+          <TabsTrigger value="annual" className="whitespace-normal">
+            Ano completo
+          </TabsTrigger>
+          <TabsTrigger value="simulator" className="whitespace-normal">
+            Simulador
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="quarters" className="space-y-5">
           <CompensationPanel result={payments} selectedQuarters={selectedQuarters} />
