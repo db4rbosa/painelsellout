@@ -442,6 +442,10 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   }, [attainment]);
 
   const totalRevenue = useMemo(() => sum(scopedRows), [scopedRows]);
+  const highlights = useMemo(
+    () => buildExecutiveHighlights(scopedRows, attainment),
+    [scopedRows, attainment],
+  );
   const totalQty = useMemo(() => sum(scopedRows, "quantity"), [scopedRows]);
   const handleFile = async (file?: File | null) => {
     if (!file) return;
@@ -464,7 +468,17 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
         .uploadToSignedUrl(upload.path, upload.token, file);
       if (uploadError) throw new Error("A planilha foi lida, mas não pôde ser salva na nuvem.");
       await saveWorkbook({
-        data: { path: upload.path, fileName: file.name, fileSize: file.size },
+        data: {
+          path: upload.path,
+          fileName: file.name,
+          fileSize: file.size,
+          stats: {
+            validRows: parsed.rows.length,
+            excludedRows: parsed.excludedRows,
+            issueCount: parsed.issues.length,
+            totalRevenue: sum(parsed.rows),
+          },
+        },
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível ler o arquivo.");
