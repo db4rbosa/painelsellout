@@ -73,7 +73,13 @@ import {
   type Targets,
 } from "@/lib/targets";
 import { defaultPrefs, normalizePrefs, type DashboardPrefs } from "@/lib/prefs";
-import { buildSalesReport, downloadReportExcel, downloadReportPdf } from "@/lib/report-export";
+import { ReportsDialog } from "@/components/ReportsDialog";
+import {
+  buildSalesReport,
+  downloadExecutivePdf,
+  downloadReportExcel,
+  downloadReportPdf,
+} from "@/lib/report-export";
 import { logout } from "@/lib/gate.functions";
 import { getAiStatus } from "@/lib/ai-status.functions";
 import {
@@ -531,6 +537,17 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     }
   };
 
+  const handleReport = async (kind: "executive" | "pdf" | "excel") => {
+    if (kind === "excel") return handleExcelExport();
+    if (kind === "pdf") return handlePdfExport();
+    setError("");
+    try {
+      await downloadExecutivePdf(report, highlights);
+    } catch {
+      setError("Não foi possível gerar o relatório executivo.");
+    }
+  };
+
   const valueFormatter = (v: number) =>
     metric === "revenue" ? fmtUSD(v) : `${new Intl.NumberFormat("pt-BR").format(v)} un.`;
 
@@ -567,34 +584,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           />
           <ImportHistoryDialog triggerClassName={headerActionClass} />
           {rows.length ? (
-            <>
-              <Button
-                variant="outline"
-                className={headerActionClass}
-                onClick={handleExcelExport}
-                disabled={exportingExcel}
-              >
-                {exportingExcel ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Sheet className="size-4" />
-                )}
-                Exportar Excel
-              </Button>
-              <Button
-                variant="outline"
-                className={headerActionClass}
-                onClick={handlePdfExport}
-                disabled={exportingPdf}
-              >
-                {exportingPdf ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <FileDown className="size-4" />
-                )}
-                Exportar PDF
-              </Button>
-            </>
+            <ReportsDialog triggerClassName={headerActionClass} onExport={handleReport} />
           ) : null}
           <label
             className="relative block w-full cursor-pointer"
