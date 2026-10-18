@@ -85,8 +85,18 @@ export function calculateCompensation(
     const valid = !issues.length && details.every((item) => item.weight === 0 || item.rate !== null);
     return { base, details, amount: valid ? details.reduce((sum, item) => sum + (item.amount ?? 0), 0) : null };
   };
-  const quarters = [0, 1, 2, 3].map((index) => period(index));
+  const regular = [0, 1, 2, 3].map((index) => period(index));
   const annual = period();
+  // Q4 carries the annual true-up: accelerator over the full Q1–Q4 actual minus Q1–Q3 already paid.
+  const paidBeforeQ4 = regular.slice(0, 3).every((q) => q.amount !== null)
+    ? regular.slice(0, 3).reduce((sum, q) => sum + (q.amount ?? 0), 0) : null;
+  const q4 = regular[3]!;
+  const trueUp = annual.amount !== null && paidBeforeQ4 !== null && q4.amount !== null
+    ? Math.max(0, annual.amount - paidBeforeQ4 - q4.amount) : null;
+  const quarters = regular.map((quarter, index) => index === 3
+    ? { ...quarter, regularAmount: quarter.amount, trueUp: trueUp ?? 0,
+        amount: quarter.amount === null || trueUp === null ? quarter.amount : quarter.amount + trueUp }
+    : { ...quarter, regularAmount: quarter.amount, trueUp: 0 });
   const quarterlyTotal = quarters.every((quarter) => quarter.amount !== null)
     ? quarters.reduce((sum, quarter) => sum + (quarter.amount ?? 0), 0) : null;
   return { annualBase, issues, quarters, annual, quarterlyTotal };
