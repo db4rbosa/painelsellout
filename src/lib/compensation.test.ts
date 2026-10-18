@@ -106,6 +106,12 @@ describe("compensation settings and amounts", () => {
     expect(result.annual.details[0]?.attainment).toBe(1);
     expect(result.annual.amount).toBe(26000);
   });
+  it("pays the annual accelerator true-up in Q4", () => {
+    const result = calculateCompensation(settings, buckets, attainment(1.5, 1.5));
+    // annual 26000 * 2.25 = 58500; Q1–Q3 paid 15600 → Q4 = 42900
+    expect(result.quarters[3]?.amount).toBeCloseTo(42900, 6);
+    expect(result.quarterlyTotal).toBeCloseTo(58500, 6);
+  });
   it("calculates annual OPI using 13 salaries and percentage", () =>
     expect(calculateCompensation(settings, buckets, attainment(1, 1)).annualBase).toBe(26000));
   it("distributes OPI by configurable quarter percentages", () =>
