@@ -100,6 +100,7 @@ export type ImportHistoryEntry = ImportStats & {
   fileSize: number;
   uploadedBy: string;
   createdAt: string;
+  downloadable: boolean;
 };
 
 const safeInt = (v: unknown) =>
@@ -127,6 +128,7 @@ export const listImportHistory = createServerFn({ method: "GET" }).handler(async
     excludedRows: r.excluded_rows,
     issueCount: r.issue_count,
     totalRevenue: Number(r.total_revenue ?? 0),
+    downloadable: Boolean(r.storage_path),
   }));
 });
 
@@ -159,11 +161,12 @@ export const registerWorkbook = createServerFn({ method: "POST" })
       excluded_rows: safeInt(data.stats?.excludedRows),
       issue_count: safeInt(data.stats?.issueCount),
       total_revenue: Number.isFinite(revenue) ? revenue : 0,
+      storage_path: data.path,
     });
 
+    // Keep stored files so every import in the history stays downloadable.
     const stale = (previous ?? []).filter((p) => p.storage_path !== data.path);
     if (stale.length) {
-      await supabaseAdmin.storage.from(BUCKET).remove(stale.map((p) => p.storage_path));
       await supabaseAdmin
         .from("workbooks")
         .delete()
@@ -174,4 +177,25 @@ export const registerWorkbook = createServerFn({ method: "POST" })
     }
 
     return { ok: true as const };
+  });
+
+export const getImportDownloadUrl = createServerFn({ method: "POST" })
+  .inputValidator((data: { id: string }) => ({ id: String(data?.id ?? "") }))
+  .handler(async ({ data }) => {
+    const { requireIdentity } = await import("./identity.server");
+    await requireIdentity();
+    const { setResponseHeader } = await import("@tanstack/react-start/server");
+    setResponseHeader("Cache-Control", "private, no-store");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("workbook_imports")
+      .select("file_name, storage_path")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!row?.storage_path) throw new Error("Arquivo não disponível para download.");
+    const { data: signed } = await supabaseAdmin.storage
+      .from(BUCKET)
+      .createSignedUrl(row.storage_path, 120, { download: row.file_name });
+    if (!signed?.signedUrl) throw new Error("Arquivo não disponível para download.");
+    return { url: signed.signedUrl };
   });
