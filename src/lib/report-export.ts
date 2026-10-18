@@ -360,3 +360,141 @@ export async function downloadReportPdf(report: SalesReport) {
   }
   doc.save(`relatorio-sell-out-${safeDate(report.generatedAt)}.pdf`);
 }
+
+export async function downloadExecutivePdf(
+  report: SalesReport,
+  highlights: import("./executive-highlights").ExecutiveHighlights,
+) {
+  const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const w = doc.internal.pageSize.getWidth();
+  const m = 14;
+  doc.setFillColor(19, 45, 49);
+  doc.rect(0, 0, w, 26, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(17);
+  doc.text("Relatório Executivo", m, 12);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text(
+    `${report.fileName} · Quarters ${report.selectedQuarters.map((q) => `Q${q}`).join(", ")} · Gerado em ${report.generatedAt.toLocaleString("pt-BR")}`,
+    m,
+    19,
+  );
+  const health: Record<string, string> = {
+    above: "Superando",
+    onTrack: "No ritmo",
+    attention: "Atenção",
+    noTarget: "Sem meta",
+  };
+  const cards: [string, string, string][] = [
+    [
+      "Saúde da meta",
+      `${percent(highlights.attainment)} · ${health[highlights.health]}`,
+      highlights.target > 0
+        ? highlights.gap > 0
+          ? `Faltam USD ${money(highlights.gap)} para 100%`
+          : "Meta do período atingida"
+        : "Metas não informadas",
+    ],
+    [
+      "Bolsos em destaque",
+      highlights.leader ? `Líder: ${highlights.leader.name}` : "Sem metas por bolso",
+      highlights.leader
+        ? `${percent(highlights.leader.attainment)}${highlights.laggard ? ` · Prioridade: ${highlights.laggard.name} (${percent(highlights.laggard.attainment)})` : ""}`
+        : "",
+    ],
+    [
+      "Principal cliente",
+      highlights.topCustomer?.name ?? "—",
+      highlights.topCustomer
+        ? `${highlights.topCustomer.account} · USD ${money(highlights.topCustomer.revenue)} · ${percent(highlights.topCustomer.share)}`
+        : "",
+    ],
+    [
+      "Pico de vendas",
+      highlights.peakMonth?.label ?? "—",
+      highlights.peakMonth ? `USD ${money(highlights.peakMonth.revenue)}` : "",
+    ],
+  ];
+  const cw = (w - m * 2 - 6) / 2;
+  cards.forEach(([title, main, sub], i) => {
+    const x = m + (i % 2) * (cw + 6);
+    const y = 34 + Math.floor(i / 2) * 30;
+    doc.setDrawColor(210, 220, 220);
+    doc.setFillColor(244, 247, 247);
+    doc.roundedRect(x, y, cw, 25, 2, 2, "FD");
+    doc.setTextColor(25, 101, 97);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.text(title.toUpperCase(), x + 4, y + 6);
+    doc.setTextColor(30, 41, 46);
+    doc.setFontSize(12);
+    doc.text(doc.splitTextToSize(main, cw - 8)[0] ?? "", x + 4, y + 14);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.text(doc.splitTextToSize(sub, cw - 8).slice(0, 2), x + 4, y + 20);
+  });
+  doc.setTextColor(30, 41, 46);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("Atingimento por bolso (período selecionado)", m, 102);
+  const barY = 106;
+  report.totals.forEach((line, i) => {
+    const y = barY + i * 11;
+    const pct = line.attainment ?? 0;
+    const bw = w - m * 2 - 60;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(doc.splitTextToSize(line.category, 44)[0] ?? "", m, y + 4);
+    doc.setFillColor(226, 232, 232);
+    doc.rect(m + 46, y, bw, 5, "F");
+    doc.setFillColor(
+      ...((pct >= 1 ? [25, 101, 97] : pct >= 0.9 ? [214, 158, 46] : [192, 57, 43]) as [
+        number,
+        number,
+        number,
+      ]),
+    );
+    doc.rect(m + 46, y, Math.min(1, Math.max(0, pct)) * bw, 5, "F");
+    doc.text(percent(line.attainment), w - m, y + 4, { align: "right" });
+  });
+  const tableY = barY + report.totals.length * 11 + 6;
+  autoTable(doc, {
+    startY: tableY,
+    margin: { left: m, right: m },
+    head: [["Quarter", "Bolso", "Realizado (USD)", "Meta (USD)", "Atingimento"]],
+    body: [
+      ...report.quarterLines.map((l) => [
+        l.period,
+        l.category,
+        money(l.actual),
+        money(l.target),
+        percent(l.attainment),
+      ]),
+      ...report.totals.map((l) => [
+        "Total",
+        l.category,
+        money(l.actual),
+        money(l.target),
+        percent(l.attainment),
+      ]),
+    ],
+    theme: "striped",
+    headStyles: { fillColor: [25, 101, 97], textColor: 255 },
+    styles: { font: "helvetica", fontSize: 7.5, cellPadding: 1.8 },
+    columnStyles: { 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" } },
+  });
+  doc.setTextColor(90, 100, 105);
+  doc.setFontSize(7);
+  doc.text(
+    `Accounts: ${shortList(report.generalAccounts).slice(0, 180)}`,
+    m,
+    doc.internal.pageSize.getHeight() - 8,
+  );
+  doc.save(`relatorio-executivo-${safeDate(report.generatedAt)}.pdf`);
+}
