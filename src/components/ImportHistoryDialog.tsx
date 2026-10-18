@@ -18,7 +18,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { listImportHistory, type ImportHistoryEntry } from "@/lib/dashboard-state.functions";
+import {
+  getImportDownloadUrl,
+  listImportHistory,
+  type ImportHistoryEntry,
+} from "@/lib/dashboard-state.functions";
 import { fmtUSD } from "@/lib/sales-data";
 
 const num = (v: number) => new Intl.NumberFormat("pt-BR").format(v);
@@ -29,9 +33,24 @@ const when = (iso: string) =>
 
 export function ImportHistoryDialog({ triggerClassName }: { triggerClassName?: string }) {
   const fetchHistory = useServerFn(listImportHistory);
+  const fetchDownload = useServerFn(getImportDownloadUrl);
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<ImportHistoryEntry[] | null>(null);
   const [error, setError] = useState("");
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  const download = async (id: string) => {
+    setDownloading(id);
+    setError("");
+    try {
+      const { url } = await fetchDownload({ data: { id } });
+      window.location.href = url;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Não foi possível baixar a planilha.");
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   const openDialog = async () => {
     setOpen(true);
@@ -92,7 +111,22 @@ export function ImportHistoryDialog({ triggerClassName }: { triggerClassName?: s
                         ) : null}
                       </TableCell>
                       <TableCell className="max-w-56 whitespace-normal break-words">
-                        {item.fileName}
+                        {item.downloadable ? (
+                          <button
+                            type="button"
+                            className="text-left font-medium text-primary underline-offset-4 hover:underline disabled:opacity-60"
+                            disabled={downloading === item.id}
+                            onClick={() => void download(item.id)}
+                            title="Baixar planilha"
+                          >
+                            {item.fileName}
+                            {downloading === item.id ? (
+                              <Loader2 className="ml-1 inline size-3 animate-spin" />
+                            ) : null}
+                          </button>
+                        ) : (
+                          <span title="Arquivo não disponível para download">{item.fileName}</span>
+                        )}
                         <span className="block text-xs text-muted-foreground">
                           {size(item.fileSize)}
                         </span>
