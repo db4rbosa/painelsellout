@@ -221,7 +221,7 @@ export function TargetPanel({
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Pagamento trimestral limitado a 100% · sem acelerador.
+                    Pagamento acumulado com acelerador.
                   </p>
                 </CardContent>
               </Card>
