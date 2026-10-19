@@ -105,12 +105,20 @@ export function CompensationPanel({
                 radius={[3, 3, 0, 0]}
                 maxBarSize={48}
               />
+              <Bar
+                dataKey="paid"
+                name="Pago"
+                fill="var(--chart-3)"
+                radius={[3, 3, 0, 0]}
+                maxBarSize={48}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
         <p className="text-xs text-muted-foreground">
           Valores na moeda do salário. A receber é uma projeção, não uma confirmação de pagamento.
-          Quarters sem meta ficam pendentes (—).
+          Quarters sem meta ficam pendentes (—). Pago é a soma dos pagamentos cadastrados em
+          Configurações.
         </p>
       </CardContent>
     </Card>
@@ -130,7 +138,7 @@ export function PaymentReconciliationCard({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Calculado vs. já pago</CardTitle>
+        <CardTitle className="text-base">Calculado vs. Pago</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="overflow-x-auto">
@@ -139,7 +147,7 @@ export function PaymentReconciliationCard({
               <tr>
                 <th className="py-2 pr-3 font-medium">Quarter</th>
                 <th className="py-2 pr-3 text-right font-medium">A receber (calculado)</th>
-                <th className="py-2 pr-3 text-right font-medium">Já pago</th>
+                <th className="py-2 pr-3 text-right font-medium">Pago</th>
                 <th className="py-2 pr-3 text-right font-medium">Diferença</th>
                 <th className="py-2 text-right font-medium">Faltou pagar</th>
               </tr>
