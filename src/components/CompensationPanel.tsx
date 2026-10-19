@@ -144,8 +144,7 @@ export function PaymentReconciliationCard({
                 <th className="py-2 pr-3 font-medium">Quarter</th>
                 <th className="py-2 pr-3 text-right font-medium">À receber</th>
                 <th className="py-2 pr-3 text-right font-medium">Pago</th>
-                <th className="py-2 pr-3 text-right font-medium">Diferença</th>
-                <th className="py-2 text-right font-medium">Faltou pagar</th>
+                <th className="py-2 text-right font-medium">Diferença</th>
               </tr>
             </thead>
             <tbody>
@@ -154,16 +153,14 @@ export function PaymentReconciliationCard({
                   <td className="py-2 pr-3">Q{q.quarter}{q.quarter === 4 ? " (inclui acelerador)" : ""}</td>
                   <td className="py-2 pr-3 text-right tabular-nums">{compensationMoney(q.calculated)}</td>
                   <td className="py-2 pr-3 text-right tabular-nums">{compensationMoney(q.paid)}</td>
-                  <td className={`py-2 pr-3 text-right tabular-nums ${tone(q.difference)}`}>{compensationMoney(q.difference)}</td>
-                  <td className="py-2 text-right tabular-nums">{compensationMoney(q.missing)}</td>
+                  <td className={`py-2 text-right tabular-nums ${tone(q.difference)}`}>{compensationMoney(q.difference)}</td>
                 </tr>
               ))}
               <tr className="border-t-2 border-border font-semibold">
                 <td className="py-2 pr-3">Ano (com acelerador)</td>
                 <td className="py-2 pr-3 text-right tabular-nums">{compensationMoney(r.annualDue)}</td>
                 <td className="py-2 pr-3 text-right tabular-nums">{compensationMoney(r.totalPaid)}</td>
-                <td className={`py-2 pr-3 text-right tabular-nums ${tone(r.annualRemaining)}`}>{compensationMoney(r.annualRemaining)}</td>
-                <td className="py-2 text-right tabular-nums">{compensationMoney(r.annualRemaining === null ? null : Math.max(0, r.annualRemaining))}</td>
+                <td className={`py-2 text-right tabular-nums ${tone(r.annualRemaining)}`}>{compensationMoney(r.annualRemaining)}</td>
               </tr>
             </tbody>
           </table>
