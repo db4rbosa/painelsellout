@@ -63,3 +63,5 @@
 - [x] Adicionar detalhamento clicável para todas as opções de agrupamento do gráfico
 - [x] Desativar Análises com IA sem créditos e reativar automaticamente
 - [x] Mostrar o valor pago no gráfico de quarters e exibir a tabela Calculado vs. Pago antes dele
+
+- [x] Remover a coluna "Faltou pagar" de Calculado vs. Pago (duplicava Diferença); tabela com 4 colunas confirmada no painel conectado
