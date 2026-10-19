@@ -82,6 +82,26 @@ export function reconcilePayments(
   };
 }
 
+/** Per-quarter chart series: expected at 100%, calculated payout, and what was already paid. */
+export function paymentChartSeries(
+  result: { quarters: { base: number; amount: number | null }[]; issues: string[] },
+  selectedQuarters: number[],
+  payments: RecordedPayment[],
+) {
+  return selectedQuarters.map((quarter) => {
+    const payout = result.quarters[quarter - 1];
+    const paid = payments
+      .filter((p) => p.quarter === quarter)
+      .reduce((sum, p) => sum + p.amount, 0);
+    return {
+      period: `Q${quarter}`,
+      expected: result.issues.length ? null : (payout?.base ?? null),
+      calculated: payout?.amount ?? null,
+      paid,
+    };
+  });
+}
+
 export function resolvedBucketWeights(settings: CompensationSettings, buckets: BucketDefinition[]) {
   const hasWeights = buckets.some((bucket) => settings.bucketWeights[bucket.id] !== undefined);
   return Object.fromEntries(buckets.map((bucket, index) => [bucket.id, hasWeights

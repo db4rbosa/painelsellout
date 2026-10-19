@@ -9,7 +9,12 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { reconcilePayments, type calculateCompensation, type RecordedPayment } from "@/lib/compensation";
+import {
+  paymentChartSeries,
+  reconcilePayments,
+  type calculateCompensation,
+  type RecordedPayment,
+} from "@/lib/compensation";
 
 export type CompensationResult = ReturnType<typeof calculateCompensation>;
 export const compensationMoney = (value: number | null) =>
