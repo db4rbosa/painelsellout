@@ -9,7 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -19,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EvolutionChart } from "@/components/EvolutionChart";
+import { summarizeCustomerItems } from "@/lib/customer-detail-items";
 import {
   DIMENSIONS,
   buildSeries,
@@ -61,6 +61,8 @@ export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
     () => [...selectedRows].sort((a, b) => b.revenue - a.revenue),
     [selectedRows],
   );
+  const isCustomer = selection?.dimension === "endUser";
+  const customerItems = useMemo(() => summarizeCustomerItems(selectedRows), [selectedRows]);
   const dimensionLabel = selection
     ? DIMENSIONS.find((dimension) => dimension.key === selection.dimension)?.label
     : undefined;
@@ -75,7 +77,7 @@ export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
             {selection?.account ? ` · Account: ${selection.account}` : ""}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[calc(92vh-88px)]">
+        <div className="min-w-0 max-h-[calc(92vh-88px)] overflow-y-auto">
           <div className="space-y-6 p-6">
             <div className="grid gap-3 sm:grid-cols-3">
               <Card>
@@ -113,26 +115,48 @@ export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
 
             <section>
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="font-semibold">Linhas de venda</h3>
-                <Badge variant="secondary">{detailRows.length} linhas</Badge>
+                <h3 className="font-semibold">{isCustomer ? "Itens vendidos por mês" : "Linhas de venda"}</h3>
+                <Badge variant="secondary">
+                  {isCustomer ? `${customerItems.length} itens` : `${detailRows.length} linhas`}
+                </Badge>
               </div>
               <div className="overflow-x-auto rounded-md border border-border">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Período</TableHead>
-                      <TableHead>Account</TableHead>
-                      <TableHead>Cliente Final</TableHead>
+                      {!isCustomer && <TableHead>Account</TableHead>}
+                      {!isCustomer && <TableHead>Cliente Final</TableHead>}
                       <TableHead>LOB</TableHead>
-                      <TableHead>SKU</TableHead>
-                      <TableHead>Revenda</TableHead>
-                      <TableHead>Distribuidor</TableHead>
+                      <TableHead>{isCustomer ? "Partnumber" : "SKU"}</TableHead>
+                      {!isCustomer && <TableHead>Revenda</TableHead>}
+                      {!isCustomer && <TableHead>Distribuidor</TableHead>}
                       <TableHead className="text-right">Receita</TableHead>
                       <TableHead className="text-right">Qtd.</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {detailRows.map((row, index) => (
+                    {isCustomer ? customerItems.map((item, index) => {
+                      const previous = customerItems[index - 1];
+                      const newPeriod = !previous || previous.fiscalYear !== item.fiscalYear ||
+                        previous.fiscalQuarter !== item.fiscalQuarter || previous.fiscalMonth !== item.fiscalMonth;
+                      return (
+                        <TableRow key={JSON.stringify([item.fiscalYear, item.fiscalQuarter, item.fiscalMonth, item.sku])}
+                          className={newPeriod ? "border-t-2 border-border" : undefined}>
+                          <TableCell className="whitespace-nowrap font-medium">
+                            {item.fiscalYear} · Q{item.fiscalQuarter} · {item.monthLabel}
+                          </TableCell>
+                          <TableCell>{item.lob}</TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            <span className="flex items-center gap-2">
+                              <Package className="size-3.5 shrink-0 text-muted-foreground" /> {item.sku}
+                            </span>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap text-right font-medium">{fmtUSD(item.revenue)}</TableCell>
+                          <TableCell className="text-right">{new Intl.NumberFormat("pt-BR").format(item.quantity)}</TableCell>
+                        </TableRow>
+                      );
+                    }) : detailRows.map((row, index) => (
                       <TableRow key={`${row.sku}-${row.fiscalWeek}-${index}`}>
                         <TableCell className="whitespace-nowrap">
                           Q{row.fiscalQuarter} · {row.monthLabel}
@@ -163,7 +187,7 @@ export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
               ) : null}
             </section>
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
