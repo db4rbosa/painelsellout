@@ -142,7 +142,7 @@ export function PaymentReconciliationCard({
             <thead className="text-left text-muted-foreground">
               <tr>
                 <th className="py-2 pr-3 font-medium">Quarter</th>
-                <th className="py-2 pr-3 text-right font-medium">A receber (calculado)</th>
+                <th className="py-2 pr-3 text-right font-medium">À receber</th>
                 <th className="py-2 pr-3 text-right font-medium">Pago</th>
                 <th className="py-2 pr-3 text-right font-medium">Diferença</th>
                 <th className="py-2 text-right font-medium">Faltou pagar</th>
