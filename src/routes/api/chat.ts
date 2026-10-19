@@ -112,14 +112,46 @@ export const Route = createFileRoute("/api/chat")({
             fetch: runIdFetch.fetch,
           });
 
+          const gatewayModel = lovable.responses("openai/gpt-6-astra");
+          const geminiModel = geminiKey
+            ? createOpenAICompatible({
+                name: "gemini",
+                baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
+                apiKey: geminiKey,
+              })("gemini-3.8-flash")
+            : null;
+          const isTransient = (error: unknown) => {
+            const e = error as { statusCode?: number; message?: string };
+            return (
+              (typeof e?.statusCode === "number" && (e.statusCode === 429 || e.statusCode >= 500)) ||
+              /503|unavailable|high demand|overloaded/i.test(String(e?.message ?? error))
+            );
+          };
+          // Falls back to the gateway when Google is temporarily unavailable.
+          const model = geminiModel
+            ? {
+                ...geminiModel,
+                specificationVersion: geminiModel.specificationVersion,
+                provider: geminiModel.provider,
+                modelId: geminiModel.modelId,
+                supportedUrls: geminiModel.supportedUrls,
+                doGenerate: (opts: Parameters<typeof geminiModel.doGenerate>[0]) =>
+                  geminiModel.doGenerate(opts),
+                doStream: async (opts: Parameters<typeof geminiModel.doStream>[0]) => {
+                  try {
+                    return await geminiModel.doStream(opts);
+                  } catch (error) {
+                    if (!key || !isTransient(error)) throw error;
+                    console.warn("Gemini indisponível; usando gateway.", error);
+                    return gatewayModel.doStream(opts);
+                  }
+                },
+              }
+            : gatewayModel;
+
           const result = streamText({
-            model: geminiKey
-              ? createOpenAICompatible({
-                  name: "gemini",
-                  baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
-                  apiKey: geminiKey,
-                })("gemini-3.8-flash")
-              : lovable.responses("openai/gpt-6-astra"),
+            model,
+            maxRetries: geminiModel ? 0 : 2,
             system: [
               "Você é um analista de Sales Out. Responda em português do Brasil, com objetividade e números claros.",
               "Use somente o CONTEXTO DE DADOS fornecido. Não invente valores e diga quando algo não estiver disponível.",
@@ -135,17 +167,15 @@ export const Route = createFileRoute("/api/chat")({
             ].join("\n\n"),
             messages: history,
             abortSignal: request.signal,
-            providerOptions: geminiKey
-              ? {}
-              : {
-                  openai: {
-                    forceReasoning: true,
-                    reasoningEffort: "medium",
-                    reasoningSummary: "auto",
-                    store: false,
-                    include: ["reasoning.encrypted_content"],
-                  },
-                },
+            providerOptions: {
+              openai: {
+                forceReasoning: true,
+                reasoningEffort: "medium",
+                reasoningSummary: "auto",
+                store: false,
+                include: ["reasoning.encrypted_content"],
+              },
+            },
           });
 
           const response = result.toUIMessageStreamResponse({
