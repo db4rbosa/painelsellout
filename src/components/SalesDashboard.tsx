@@ -578,6 +578,11 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
             onAccountsChange={setAccounts}
             onFiltersChange={setFilters}
             onBucketsChange={setBuckets}
+            targetAccountOptions={targetAccountOptions}
+            accountsByQuarter={accountsByQuarter}
+            onQuarterAccountsChange={updateQuarterAccounts}
+            targets={targets}
+            onTargetsChange={updateTargets}
             compensation={compensation}
             onCompensationChange={setCompensation}
             onSave={saveSettingsNow}
@@ -1003,14 +1008,10 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
 
             <TabsContent value="metas" className="mt-6">
               <TargetPanel
-                accountOptions={targetAccountOptions}
                 buckets={buckets}
                 selectedQuarters={selectedQuarters}
                 onSelectedQuartersChange={setSelectedQuarters}
-                accountsByQuarter={accountsByQuarter}
-                onAccountsByQuarterChange={updateQuarterAccounts}
                 targets={targets}
-                onChange={updateTargets}
                 attainment={attainment}
                 compensation={compensation}
                 annualAttainment={annualAttainment}

@@ -18,6 +18,7 @@
 - Resolve any presented bearer before considering the legacy master cookie; derive preference ownership exclusively from the verified identity and never from caller input.
 - Serialize dashboard preference writes and reuse that queue for explicit section saves to prevent older autosaves overwriting acknowledged changes.
 - Organize target detail into monthly, quarter, and full-year views with a shared selected-period summary; preserve full-year calculation independent of visible quarters.
+- Edit quarter accounts and bucket targets only in the settings sheet through QuarterTargetSettings; share dashboard state and its save queue to keep analysis views read-only without divergent preferences.
 - Run settings ownership unit tests with vitest.settings.config.ts so server-function handlers are tested without the production RPC compiler transform.
 - Use the same validated workbook parser in the browser and AI context; follow workbook relationship order and scan all rows so blank formatting cannot silently truncate sales.
 - Index normalized Line of Business memberships before attainment aggregation to avoid repeated bucket scans while preserving full contribution to overlapping buckets.

@@ -1,17 +1,13 @@
 import { Check, Layers3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MultiSelectFilter } from "@/components/MultiSelectFilter";
-import { NumberInput } from "@/components/NumberInput";
 import { fmtPct, fmtUSD } from "@/lib/sales-data";
 import type {
   AttainmentResult,
   AttainmentRow,
   BucketDefinition,
-  QuarterAccounts,
   Targets,
 } from "@/lib/targets";
 import { cn } from "@/lib/utils";
@@ -89,28 +85,20 @@ function AttainmentBlock({
 }
 
 type Props = {
-  accountOptions: string[];
   buckets: BucketDefinition[];
   selectedQuarters: number[];
   onSelectedQuartersChange: (quarters: number[]) => void;
-  accountsByQuarter: QuarterAccounts;
-  onAccountsByQuarterChange: (quarter: number, accounts: string[]) => void;
   targets: Targets;
-  onChange: (targets: Targets) => void;
   attainment: AttainmentResult;
   compensation: CompensationSettings;
   annualAttainment: AttainmentResult;
 };
 
 export function TargetPanel({
-  accountOptions,
   buckets,
   selectedQuarters,
   onSelectedQuartersChange,
-  accountsByQuarter,
-  onAccountsByQuarterChange,
   targets,
-  onChange,
   attainment,
   compensation,
   annualAttainment,
@@ -191,39 +179,6 @@ export function TargetPanel({
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  <MultiSelectFilter
-                    label={`Accounts do Q${quarter}`}
-                    options={accountOptions}
-                    selected={accountsByQuarter[quarter] ?? []}
-                    onChange={(values) =>
-                      values.length && onAccountsByQuarterChange(quarter, values)
-                    }
-                    placeholder="Selecione ao menos um account"
-                    showChips
-                  />
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {buckets.map((bucket) => (
-                      <div key={bucket.id} className="space-y-2">
-                        <Label htmlFor={`target-${bucket.id}-q${quarter}`}>
-                          Meta {bucket.name} Q{quarter} (USD)
-                        </Label>
-                        <NumberInput
-                          id={`target-${bucket.id}-q${quarter}`}
-                          value={targets.byBucket[bucket.id]?.[quarter - 1] ?? 0}
-                          onChange={(value) => {
-                            const quarterValues = [
-                              ...(targets.byBucket[bucket.id] ?? [0, 0, 0, 0]),
-                            ] as [number, number, number, number];
-                            quarterValues[quarter - 1] = value;
-                            onChange({
-                              ...targets,
-                              byBucket: { ...targets.byBucket, [bucket.id]: quarterValues },
-                            });
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {attainment.buckets.map((bucket) => {
                       const row = bucket.quarters[quarter - 1];
