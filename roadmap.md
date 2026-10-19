@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Mover accounts e metas por quarter para Configurações; salvamento autenticado e visual no celular validados
+- [x] Reorganizar relatório executivo em tabelas legíveis; PDF real de uma página e 37 testes validados
+
 - [x] Corrigir travamento da análise de IA e validar a pergunta de maior venda mensal por cliente; resposta e histórico confirmados com conta conectada, 30 testes passando
 
 - [x] Recuperar a última planilha com avisos detalhados, sem bloquear linhas válidas

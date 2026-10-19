@@ -15,7 +15,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { FILTER_DIMS, FILTER_LABELS, emptyFilters, type Filters } from "@/lib/sales-data";
-import type { BucketDefinition } from "@/lib/targets";
+import type { BucketDefinition, QuarterAccounts, Targets } from "@/lib/targets";
+import { QuarterTargetSettings } from "@/components/QuarterTargetSettings";
 import { CompensationSettings } from "@/components/CompensationSettings";
 import type { CompensationSettings as PayoutSettings } from "@/lib/compensation";
 
@@ -31,6 +32,11 @@ type Props = {
   onAccountsChange: (accounts: string[]) => void;
   onFiltersChange: (filters: Filters) => void;
   onBucketsChange: (buckets: BucketDefinition[]) => void;
+  targetAccountOptions: string[];
+  accountsByQuarter: QuarterAccounts;
+  onQuarterAccountsChange: (quarter: number, accounts: string[]) => void;
+  targets: Targets;
+  onTargetsChange: (targets: Targets) => void;
   compensation: PayoutSettings;
   onCompensationChange: (settings: PayoutSettings) => void;
   onSave: () => Promise<void>;
@@ -89,6 +95,11 @@ export function SystemSettingsSheet({
   onAccountsChange,
   onFiltersChange,
   onBucketsChange,
+  targetAccountOptions,
+  accountsByQuarter,
+  onQuarterAccountsChange,
+  targets,
+  onTargetsChange,
   compensation,
   onCompensationChange,
   onSave,
@@ -159,6 +170,16 @@ export function SystemSettingsSheet({
               onChange={onBucketsChange}
             />
             <SaveSection name="bolsos" onSave={onSave} />
+            <Separator />
+            <QuarterTargetSettings
+              accountOptions={targetAccountOptions}
+              accountsByQuarter={accountsByQuarter}
+              onAccountsChange={onQuarterAccountsChange}
+              buckets={buckets}
+              targets={targets}
+              onTargetsChange={onTargetsChange}
+            />
+            <SaveSection name="accounts e metas por quarter" onSave={onSave} />
             <Separator />
             <CompensationSettings
               value={compensation}
