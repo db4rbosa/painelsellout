@@ -605,7 +605,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
             />
             <span className={buttonVariants({ className: headerActionClass })}>
               <Upload className="size-4" />
-              {rows.length ? "Trocar planilha" : "Importar planilha"}
+              Importar Planilha
             </span>
           </label>
           {access.isAdmin ? (
