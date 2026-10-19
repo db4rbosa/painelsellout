@@ -9,7 +9,12 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { reconcilePayments, type calculateCompensation, type RecordedPayment } from "@/lib/compensation";
+import {
+  paymentChartSeries,
+  reconcilePayments,
+  type calculateCompensation,
+  type RecordedPayment,
+} from "@/lib/compensation";
 
 export type CompensationResult = ReturnType<typeof calculateCompensation>;
 export const compensationMoney = (value: number | null) =>
@@ -22,18 +27,13 @@ export const compensationMoney = (value: number | null) =>
 export function CompensationPanel({
   result,
   selectedQuarters,
+  payments,
 }: {
   result: CompensationResult;
   selectedQuarters: number[];
+  payments: RecordedPayment[];
 }) {
-  const data = selectedQuarters.map((quarter) => {
-    const payout = result.quarters[quarter - 1];
-    return {
-      period: `Q${quarter}`,
-      expected: result.issues.length ? null : (payout?.base ?? null),
-      calculated: payout?.amount ?? null,
-    };
-  });
+  const data = paymentChartSeries(result, selectedQuarters, payments);
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -50,7 +50,7 @@ export function CompensationPanel({
         <div
           className="h-64 w-full sm:h-72"
           role="img"
-          aria-label="Comparação dos valores esperados a 100% e calculados a receber por quarter"
+          aria-label="Comparação dos valores esperados a 100%, calculados a receber e já pagos por quarter"
         >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 12, right: 8, bottom: 0, left: 0 }} barGap={4}>
@@ -101,12 +101,20 @@ export function CompensationPanel({
                 radius={[3, 3, 0, 0]}
                 maxBarSize={48}
               />
+              <Bar
+                dataKey="paid"
+                name="Pago"
+                fill="var(--chart-3)"
+                radius={[3, 3, 0, 0]}
+                maxBarSize={48}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
         <p className="text-xs text-muted-foreground">
           Valores na moeda do salário. A receber é uma projeção, não uma confirmação de pagamento.
-          Quarters sem meta ficam pendentes (—).
+          Quarters sem meta ficam pendentes (—). Pago é a soma dos pagamentos cadastrados em
+          Configurações.
         </p>
       </CardContent>
     </Card>
@@ -126,7 +134,7 @@ export function PaymentReconciliationCard({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Calculado vs. já pago</CardTitle>
+        <CardTitle className="text-base">Calculado vs. Pago</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="overflow-x-auto">
@@ -135,7 +143,7 @@ export function PaymentReconciliationCard({
               <tr>
                 <th className="py-2 pr-3 font-medium">Quarter</th>
                 <th className="py-2 pr-3 text-right font-medium">A receber (calculado)</th>
-                <th className="py-2 pr-3 text-right font-medium">Já pago</th>
+                <th className="py-2 pr-3 text-right font-medium">Pago</th>
                 <th className="py-2 pr-3 text-right font-medium">Diferença</th>
                 <th className="py-2 text-right font-medium">Faltou pagar</th>
               </tr>
