@@ -18,6 +18,7 @@ const buckets: BucketDefinition[] = [
 const settings: CompensationSettings = {
   salaryAtQaf: 10000,
   opiPercent: 20,
+  payments: [],
   quarterShares: [10, 20, 30, 40],
   bucketWeights: { m1: 70, m4: 30 },
 };
