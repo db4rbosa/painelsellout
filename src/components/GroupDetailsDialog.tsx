@@ -9,7 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -78,7 +77,7 @@ export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
             {selection?.account ? ` · Account: ${selection.account}` : ""}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[calc(92vh-88px)]">
+        <div className="min-w-0 max-h-[calc(92vh-88px)] overflow-y-auto">
           <div className="space-y-6 p-6">
             <div className="grid gap-3 sm:grid-cols-3">
               <Card>
@@ -188,7 +187,7 @@ export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
               ) : null}
             </section>
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );

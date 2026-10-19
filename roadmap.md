@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Consolidar partnumbers por mês nos detalhes do cliente, ordenar períodos decrescentes e validar somas e apresentação
+- [x] Consolidar partnumbers por mês nos detalhes do cliente, ordenar períodos decrescentes e validar somas e apresentação; Riachuelo resumida de 962 linhas para 47 itens
 
 - [x] Mover accounts e metas por quarter para Configurações; salvamento autenticado e visual no celular validados
 - [x] Reorganizar relatório executivo em tabelas legíveis; PDF real de uma página e 37 testes validados
