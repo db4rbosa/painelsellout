@@ -556,7 +556,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
       <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-            Sales Out · Fiscal Analytics
+            SALES OUT · ANALYTICS
           </p>
           <h1 className="mt-2 text-3xl font-bold md:text-4xl">Painel de Sell-Out e Metas</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
@@ -740,7 +740,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
         <>
           <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              { label: "Receita no escopo", value: fmtUSD(totalRevenue) },
+              { label: "RECEITA", value: fmtUSD(totalRevenue) },
               { label: "Quantidade", value: new Intl.NumberFormat("pt-BR").format(totalQty) },
               {
                 label: "Linhas importadas",
