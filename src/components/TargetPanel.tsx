@@ -51,7 +51,7 @@ function AttainmentBlock({
         className="mt-3"
       />
       <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-        <span>Real {fmtUSD(row.actual)}</span>
+        <span>Realizado {fmtUSD(row.actual)}</span>
         <span>Meta {fmtUSD(row.target)}</span>
       </div>
       {payout ? (

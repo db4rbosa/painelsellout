@@ -1018,7 +1018,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
               />
               <Card className="mt-6">
                 <CardHeader>
-                  <CardTitle className="text-base">Real vs. meta acumulada</CardTitle>
+                  <CardTitle className="text-base">Realizado vs. Meta Acumulada</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <EvolutionChart
