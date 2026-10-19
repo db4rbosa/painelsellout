@@ -47,7 +47,7 @@ export function ChangePasswordDialog({ email, trigger }: { email: string; trigge
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Alterar senha</DialogTitle>
+          <DialogTitle>Alterar Senha</DialogTitle>
           <DialogDescription>Confirme sua senha atual e escolha uma nova senha segura.</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={submit}>
@@ -67,7 +67,7 @@ export function ChangePasswordDialog({ email, trigger }: { email: string; trigge
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           {message ? <p className="text-sm text-primary">{message}</p> : null}
           <DialogFooter>
-            <Button type="submit" disabled={busy}>{busy ? "Alterando..." : "Alterar senha"}</Button>
+            <Button type="submit" disabled={busy}>{busy ? "Alterando..." : "Alterar Senha"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
