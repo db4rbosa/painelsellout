@@ -33,16 +33,7 @@ export function CompensationPanel({
   selectedQuarters: number[];
   payments: RecordedPayment[];
 }) {
-  const reconciliation = reconcilePayments(result, payments);
-  const data = selectedQuarters.map((quarter) => {
-    const payout = result.quarters[quarter - 1];
-    return {
-      period: `Q${quarter}`,
-      expected: result.issues.length ? null : (payout?.base ?? null),
-      calculated: payout?.amount ?? null,
-      paid: reconciliation.quarters[quarter - 1]?.paid ?? 0,
-    };
-  });
+  const data = paymentChartSeries(result, selectedQuarters, payments);
   return (
     <Card>
       <CardHeader className="pb-3">

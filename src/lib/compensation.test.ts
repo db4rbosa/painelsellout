@@ -187,7 +187,7 @@ describe("compensation settings and amounts", () => {
   });
 });
 
-import { reconcilePayments as reconcile } from "./compensation";
+import { paymentChartSeries, reconcilePayments as reconcile } from "./compensation";
 describe("reconcilePayments", () => {
   it("compares paid per quarter and annual total with accelerator", () => {
     const r = reconcile(
@@ -197,5 +197,36 @@ describe("reconcilePayments", () => {
     expect(r.quarters[1]!.missing).toBe(1000);
     expect(r.quarters[0]!.difference).toBe(0);
     expect(r.annualRemaining).toBe(49500);
+  });
+});
+
+describe("paymentChartSeries", () => {
+  const chartResult = {
+    quarters: [
+      { base: 6500, amount: 5000 },
+      { base: 6500, amount: 5000 },
+      { base: 6500, amount: 5000 },
+      { base: 6500, amount: 42900 },
+    ],
+    issues: [] as string[],
+  };
+
+  it("adds the paid amount of every recorded payment to its quarter", () => {
+    const series = paymentChartSeries(
+      chartResult,
+      [1, 2, 3, 4],
+      [
+        { id: "a", quarter: 1, month: 4, year: 2026, amount: 5000 },
+        { id: "b", quarter: 1, month: 5, year: 2026, amount: 1500 },
+        { id: "c", quarter: 4, month: 11, year: 2026, amount: 20000 },
+      ],
+    );
+    expect(series.map((row) => row.paid)).toEqual([6500, 0, 0, 20000]);
+    expect(series[0]).toEqual({ period: "Q1", expected: 6500, calculated: 5000, paid: 6500 });
+  });
+
+  it("keeps quarters outside the selection out of the series", () => {
+    const series = paymentChartSeries(chartResult, [3], [{ id: "a", quarter: 1, month: 4, year: 2026, amount: 5000 }]);
+    expect(series).toEqual([{ period: "Q3", expected: 6500, calculated: 5000, paid: 0 }]);
   });
 });
