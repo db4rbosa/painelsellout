@@ -22,16 +22,20 @@ export const compensationMoney = (value: number | null) =>
 export function CompensationPanel({
   result,
   selectedQuarters,
+  payments,
 }: {
   result: CompensationResult;
   selectedQuarters: number[];
+  payments: RecordedPayment[];
 }) {
+  const reconciliation = reconcilePayments(result, payments);
   const data = selectedQuarters.map((quarter) => {
     const payout = result.quarters[quarter - 1];
     return {
       period: `Q${quarter}`,
       expected: result.issues.length ? null : (payout?.base ?? null),
       calculated: payout?.amount ?? null,
+      paid: reconciliation.quarters[quarter - 1]?.paid ?? 0,
     };
   });
   return (
@@ -50,7 +54,7 @@ export function CompensationPanel({
         <div
           className="h-64 w-full sm:h-72"
           role="img"
-          aria-label="Comparação dos valores esperados a 100% e calculados a receber por quarter"
+          aria-label="Comparação dos valores esperados a 100%, calculados a receber e já pagos por quarter"
         >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 12, right: 8, bottom: 0, left: 0 }} barGap={4}>
