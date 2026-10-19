@@ -37,7 +37,7 @@ export function CompensationPanel({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Pagamentos por quarter · esperado vs. a receber</CardTitle>
+        <CardTitle className="text-base">Pagamentos por Quarter · Esperado vs. À Receber vs. Pago</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {result.issues.length > 0 ? (
@@ -89,14 +89,14 @@ export function CompensationPanel({
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Bar
                 dataKey="expected"
-                name="Esperado · 100%"
+                name="Esperado (100%)"
                 fill="var(--accent)"
                 radius={[3, 3, 0, 0]}
                 maxBarSize={48}
               />
               <Bar
                 dataKey="calculated"
-                name="A receber · calculado"
+                name="À Receber"
                 fill="var(--primary)"
                 radius={[3, 3, 0, 0]}
                 maxBarSize={48}
