@@ -1,10 +1,19 @@
 import type { AttainmentResult, BucketDefinition, QuarterValues } from "./targets";
 
+export type RecordedPayment = {
+  id: string;
+  quarter: number;
+  month: number;
+  year: number;
+  amount: number;
+};
+
 export type CompensationSettings = {
   salaryAtQaf: number;
   opiPercent: number;
   quarterShares: QuarterValues;
   bucketWeights: Record<string, number>;
+  payments: RecordedPayment[];
 };
 
 export const defaultCompensation = (): CompensationSettings => ({
@@ -12,10 +21,29 @@ export const defaultCompensation = (): CompensationSettings => ({
   opiPercent: 0,
   quarterShares: [25, 25, 25, 25],
   bucketWeights: {},
+  payments: [],
 });
 
 const nonNegative = (value: unknown) =>
   typeof value === "number" && Number.isFinite(value) ? Math.max(0, value) : 0;
+
+const normalizePayments = (raw: unknown): RecordedPayment[] =>
+  Array.isArray(raw)
+    ? raw.flatMap((item, index) => {
+        if (!item || typeof item !== "object") return [];
+        const r = item as Record<string, unknown>;
+        const quarter = Number(r["quarter"]);
+        const month = Number(r["month"]);
+        const year = Number(r["year"]);
+        if (![1, 2, 3, 4].includes(quarter) || month < 1 || month > 12 || !Number.isInteger(year))
+          return [];
+        return [{
+          id: typeof r["id"] === "string" && r["id"] ? r["id"] : `p${index}`,
+          quarter, month, year,
+          amount: typeof r["amount"] === "number" && Number.isFinite(r["amount"]) ? r["amount"] : 0,
+        }];
+      })
+    : [];
 
 export function normalizeCompensation(raw: unknown): CompensationSettings {
   const base = defaultCompensation();
@@ -29,6 +57,28 @@ export function normalizeCompensation(raw: unknown): CompensationSettings {
     opiPercent: Math.min(100, nonNegative(record["opiPercent"])),
     quarterShares: [0, 1, 2, 3].map((index) => Math.min(100, nonNegative(shares[index]))) as QuarterValues,
     bucketWeights: Object.fromEntries(Object.entries(weights).map(([id, value]) => [id, Math.min(100, nonNegative(value))])),
+    payments: normalizePayments(record["payments"]),
+  };
+}
+
+/** Compares calculated payouts (Q4 includes the annual accelerator true-up) with recorded payments. */
+export function reconcilePayments(
+  result: { quarters: { amount: number | null }[]; annual: { amount: number | null } },
+  payments: RecordedPayment[],
+) {
+  const quarters = [1, 2, 3, 4].map((quarter) => {
+    const calculated = result.quarters[quarter - 1]?.amount ?? null;
+    const paid = payments.filter((p) => p.quarter === quarter).reduce((s, p) => s + p.amount, 0);
+    const difference = calculated === null ? null : calculated - paid;
+    return { quarter, calculated, paid, difference, missing: difference === null ? null : Math.max(0, difference) };
+  });
+  const totalPaid = quarters.reduce((s, q) => s + q.paid, 0);
+  const annualDue = result.annual.amount;
+  return {
+    quarters,
+    totalPaid,
+    annualDue,
+    annualRemaining: annualDue === null ? null : annualDue - totalPaid,
   };
 }
 

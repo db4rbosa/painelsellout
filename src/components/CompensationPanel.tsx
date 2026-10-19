@@ -9,7 +9,7 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { type calculateCompensation } from "@/lib/compensation";
+import { reconcilePayments, type calculateCompensation, type RecordedPayment } from "@/lib/compensation";
 
 export type CompensationResult = ReturnType<typeof calculateCompensation>;
 export const compensationMoney = (value: number | null) =>
@@ -107,6 +107,61 @@ export function CompensationPanel({
         <p className="text-xs text-muted-foreground">
           Valores na moeda do salário. A receber é uma projeção, não uma confirmação de pagamento.
           Quarters sem meta ficam pendentes (—).
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function PaymentReconciliationCard({
+  result,
+  payments,
+}: {
+  result: CompensationResult;
+  payments: RecordedPayment[];
+}) {
+  const r = reconcilePayments(result, payments);
+  const tone = (value: number | null) =>
+    value === null ? "" : value > 0.005 ? "text-destructive" : value < -0.005 ? "text-primary" : "";
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Calculado vs. já pago</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-muted-foreground">
+              <tr>
+                <th className="py-2 pr-3 font-medium">Quarter</th>
+                <th className="py-2 pr-3 text-right font-medium">A receber (calculado)</th>
+                <th className="py-2 pr-3 text-right font-medium">Já pago</th>
+                <th className="py-2 pr-3 text-right font-medium">Diferença</th>
+                <th className="py-2 text-right font-medium">Faltou pagar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.quarters.map((q) => (
+                <tr key={q.quarter} className="border-t border-border">
+                  <td className="py-2 pr-3">Q{q.quarter}{q.quarter === 4 ? " (inclui acelerador)" : ""}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{compensationMoney(q.calculated)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{compensationMoney(q.paid)}</td>
+                  <td className={`py-2 pr-3 text-right tabular-nums ${tone(q.difference)}`}>{compensationMoney(q.difference)}</td>
+                  <td className="py-2 text-right tabular-nums">{compensationMoney(q.missing)}</td>
+                </tr>
+              ))}
+              <tr className="border-t-2 border-border font-semibold">
+                <td className="py-2 pr-3">Ano (com acelerador)</td>
+                <td className="py-2 pr-3 text-right tabular-nums">{compensationMoney(r.annualDue)}</td>
+                <td className="py-2 pr-3 text-right tabular-nums">{compensationMoney(r.totalPaid)}</td>
+                <td className={`py-2 pr-3 text-right tabular-nums ${tone(r.annualRemaining)}`}>{compensationMoney(r.annualRemaining)}</td>
+                <td className="py-2 text-right tabular-nums">{compensationMoney(r.annualRemaining === null ? null : Math.max(0, r.annualRemaining))}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Diferença positiva = falta pagar; negativa = pago a mais. A conta final do ano usa o total anual com acelerador menos tudo o que já foi pago. Cadastre os pagamentos em Configurações.
         </p>
       </CardContent>
     </Card>
