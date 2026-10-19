@@ -165,8 +165,12 @@ export function TargetPanel({
           </TabsTrigger>
         </TabsList>
         <TabsContent value="quarters" className="space-y-5">
-          <CompensationPanel result={payments} selectedQuarters={selectedQuarters} />
           <PaymentReconciliationCard result={payments} payments={compensation.payments} />
+          <CompensationPanel
+            result={payments}
+            selectedQuarters={selectedQuarters}
+            payments={compensation.payments}
+          />
           <div className="grid items-start gap-5 xl:grid-cols-2">
             {selectedQuarters.map((quarter) => (
               <Card key={quarter}>
