@@ -370,131 +370,170 @@ export async function downloadExecutivePdf(
     import("jspdf-autotable"),
   ]);
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const w = doc.internal.pageSize.getWidth();
-  const m = 14;
-  doc.setFillColor(19, 45, 49);
-  doc.rect(0, 0, w, 26, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(17);
-  doc.text("Relatório Executivo", m, 12);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text(
-    `${report.fileName} · Quarters ${report.selectedQuarters.map((q) => `Q${q}`).join(", ")} · Gerado em ${report.generatedAt.toLocaleString("pt-BR")}`,
-    m,
-    19,
-  );
-  const health: Record<string, string> = {
+  const width = doc.internal.pageSize.getWidth();
+  const height = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const palette = {
+    heading: [19, 45, 49] as [number, number, number],
+    accent: [25, 101, 97] as [number, number, number],
+    ink: [30, 41, 46] as [number, number, number],
+    muted: [90, 100, 105] as [number, number, number],
+    stripe: [244, 247, 247] as [number, number, number],
+  };
+  const header = () => {
+    doc.setFillColor(...palette.heading);
+    doc.rect(0, 0, width, 25, "F");
+    doc.setTextColor(255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(17);
+    doc.text("Relatório Executivo", margin, 12);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(
+      `${report.selectedQuarters.map((q) => `Q${q}`).join(" + ")} · Gerado em ${report.generatedAt.toLocaleString("pt-BR")}`,
+      margin,
+      19,
+    );
+  };
+  header();
+  let cursor = 33;
+  type TableOptions = Parameters<typeof autoTable>[1];
+  const section = (title: string, options: TableOptions) => {
+    if (cursor > height - 45) {
+      doc.addPage();
+      header();
+      cursor = 33;
+    }
+    doc.setTextColor(...palette.ink);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(title, margin, cursor);
+    autoTable(doc, {
+      theme: "striped",
+      styles: {
+        font: "helvetica",
+        fontSize: 8,
+        cellPadding: 2,
+        overflow: "linebreak",
+        textColor: palette.ink,
+      },
+      headStyles: { fillColor: palette.accent, textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: palette.stripe },
+      showHead: "everyPage",
+      rowPageBreak: "avoid",
+      ...options,
+      startY: cursor + 4,
+      margin: { left: margin, right: margin, top: 33, bottom: 16 },
+      willDrawPage: () => {
+        if (doc.getNumberOfPages() > 1) header();
+      },
+    });
+    cursor = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 9;
+  };
+  const health = {
     above: "Superando",
     onTrack: "No ritmo",
     attention: "Atenção",
     noTarget: "Sem meta",
   };
-  const cards: [string, string, string][] = [
-    [
-      "Saúde da meta",
-      `${percent(highlights.attainment)} · ${health[highlights.health]}`,
-      highlights.target > 0
-        ? highlights.gap > 0
-          ? `Faltam USD ${money(highlights.gap)} para 100%`
-          : "Meta do período atingida"
-        : "Metas não informadas",
-    ],
-    [
-      "Bolsos em destaque",
-      highlights.leader ? `Líder: ${highlights.leader.name}` : "Sem metas por bolso",
-      highlights.leader
-        ? `${percent(highlights.leader.attainment)}${highlights.laggard ? ` · Prioridade: ${highlights.laggard.name} (${percent(highlights.laggard.attainment)})` : ""}`
-        : "",
-    ],
-    [
-      "Principal cliente",
-      highlights.topCustomer?.name ?? "—",
-      highlights.topCustomer
-        ? `${highlights.topCustomer.account} · USD ${money(highlights.topCustomer.revenue)} · ${percent(highlights.topCustomer.share)}`
-        : "",
-    ],
-    [
-      "Pico de vendas",
-      highlights.peakMonth?.label ?? "—",
-      highlights.peakMonth ? `USD ${money(highlights.peakMonth.revenue)}` : "",
-    ],
-  ];
-  const cw = (w - m * 2 - 6) / 2;
-  cards.forEach(([title, main, sub], i) => {
-    const x = m + (i % 2) * (cw + 6);
-    const y = 34 + Math.floor(i / 2) * 30;
-    doc.setDrawColor(210, 220, 220);
-    doc.setFillColor(244, 247, 247);
-    doc.roundedRect(x, y, cw, 25, 2, 2, "FD");
-    doc.setTextColor(25, 101, 97);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
-    doc.text(title.toUpperCase(), x + 4, y + 6);
-    doc.setTextColor(30, 41, 46);
-    doc.setFontSize(12);
-    doc.text(doc.splitTextToSize(main, cw - 8)[0] ?? "", x + 4, y + 14);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.text(doc.splitTextToSize(sub, cw - 8).slice(0, 2), x + 4, y + 20);
-  });
-  doc.setTextColor(30, 41, 46);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("Atingimento por bolso (período selecionado)", m, 102);
-  const barY = 106;
-  report.totals.forEach((line, i) => {
-    const y = barY + i * 11;
-    const pct = line.attainment ?? 0;
-    const bw = w - m * 2 - 60;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.text(doc.splitTextToSize(line.category, 44)[0] ?? "", m, y + 4);
-    doc.setFillColor(226, 232, 232);
-    doc.rect(m + 46, y, bw, 5, "F");
-    doc.setFillColor(
-      ...((pct >= 1 ? [25, 101, 97] : pct >= 0.9 ? [214, 158, 46] : [192, 57, 43]) as [
-        number,
-        number,
-        number,
-      ]),
-    );
-    doc.rect(m + 46, y, Math.min(1, Math.max(0, pct)) * bw, 5, "F");
-    doc.text(percent(line.attainment), w - m, y + 4, { align: "right" });
-  });
-  const tableY = barY + report.totals.length * 11 + 6;
-  autoTable(doc, {
-    startY: tableY,
-    margin: { left: m, right: m },
-    head: [["Quarter", "Bolso", "Realizado (USD)", "Meta (USD)", "Atingimento"]],
+  section("Destaques do período", {
+    head: [["Indicador", "Resultado", "Detalhamento"]],
     body: [
-      ...report.quarterLines.map((l) => [
-        l.period,
-        l.category,
-        money(l.actual),
-        money(l.target),
-        percent(l.attainment),
-      ]),
-      ...report.totals.map((l) => [
-        "Total",
-        l.category,
-        money(l.actual),
-        money(l.target),
-        percent(l.attainment),
-      ]),
+      [
+        "Saúde da meta",
+        `${percent(highlights.attainment)} · ${health[highlights.health]}`,
+        highlights.target > 0
+          ? `Gap para 100%: USD ${money(highlights.gap)}`
+          : "Metas não informadas",
+      ],
+      [
+        "Bolso líder",
+        highlights.leader?.name ?? "—",
+        percent(highlights.leader?.attainment ?? null),
+      ],
+      [
+        "Bolso prioritário",
+        highlights.laggard?.name ?? "—",
+        percent(highlights.laggard?.attainment ?? null),
+      ],
+      [
+        "Principal cliente",
+        highlights.topCustomer?.name ?? "—",
+        highlights.topCustomer
+          ? `${highlights.topCustomer.account}\nUSD ${money(highlights.topCustomer.revenue)} · ${percent(highlights.topCustomer.share)} da receita`
+          : "Sem vendas",
+      ],
+      [
+        "Pico de vendas",
+        highlights.peakMonth?.label ?? "—",
+        highlights.peakMonth ? `USD ${money(highlights.peakMonth.revenue)}` : "Sem vendas",
+      ],
     ],
-    theme: "striped",
-    headStyles: { fillColor: [25, 101, 97], textColor: 255 },
-    styles: { font: "helvetica", fontSize: 7.5, cellPadding: 1.8 },
-    columnStyles: { 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" } },
+    columnStyles: { 0: { cellWidth: 38, fontStyle: "bold" }, 1: { cellWidth: 65 } },
   });
-  doc.setTextColor(90, 100, 105);
-  doc.setFontSize(7);
-  doc.text(
-    `Accounts: ${shortList(report.generalAccounts).slice(0, 180)}`,
-    m,
-    doc.internal.pageSize.getHeight() - 8,
-  );
+  const valueColumns = {
+    1: { halign: "right" as const },
+    2: { halign: "right" as const },
+    3: { halign: "right" as const },
+    4: { halign: "right" as const },
+  };
+  section("Consolidado por bolso · USD", {
+    head: [["Bolso", "Meta", "Realizado", "Gap para 100%", "Atingimento"]],
+    body: report.totals.map((line) => [
+      line.category,
+      money(line.target),
+      money(line.actual),
+      line.target > 0 ? money(Math.max(0, line.target - line.actual)) : "—",
+      percent(line.attainment),
+    ]),
+    columnStyles: valueColumns,
+  });
+  section("Acompanhamento por quarter · USD", {
+    head: [["Quarter", "Bolso", "Meta", "Realizado", "Gap para 100%", "Atingimento"]],
+    body: [...report.quarterLines]
+      .sort((a, b) => a.period.localeCompare(b.period))
+      .map((line) => [
+        line.period,
+        line.category,
+        money(line.target),
+        money(line.actual),
+        line.target > 0 ? money(Math.max(0, line.target - line.actual)) : "—",
+        percent(line.attainment),
+      ]),
+    columnStyles: {
+      0: { cellWidth: 16 },
+      1: { cellWidth: 40 },
+      2: { halign: "right" },
+      3: { halign: "right" },
+      4: { halign: "right" },
+      5: { halign: "right" },
+    },
+  });
+  section("Base e escopo da análise", {
+    body: [
+      ["Planilha", report.fileName],
+      ["Accounts gerais", shortList(report.generalAccounts)],
+      ...report.quarterAccounts.map((item) => [
+        `Accounts Q${item.quarter}`,
+        shortList(item.accounts),
+      ]),
+      ...report.filters.map((item) => [item.label, shortList(item.values)]),
+      ...report.buckets.map((bucket) => [bucket.name, shortList(bucket.lineOfBusiness)]),
+    ],
+    columnStyles: { 0: { cellWidth: 42, fontStyle: "bold" } },
+  });
+  const pages = doc.getNumberOfPages();
+  for (let page = 1; page <= pages; page += 1) {
+    doc.setPage(page);
+    doc.setTextColor(...palette.muted);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.text(
+      `Painel de Sell-Out · Executivo · Página ${page} de ${pages}`,
+      width - margin,
+      height - 8,
+      { align: "right" },
+    );
+  }
   doc.save(`relatorio-executivo-${safeDate(report.generatedAt)}.pdf`);
 }

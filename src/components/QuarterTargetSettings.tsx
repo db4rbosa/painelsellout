@@ -30,7 +30,9 @@ export function QuarterTargetSettings({
       <Tabs defaultValue="1" className="space-y-4">
         <TabsList className="grid h-11 w-full grid-cols-4">
           {[1, 2, 3, 4].map((quarter) => (
-            <TabsTrigger key={quarter} value={String(quarter)}>Q{quarter}</TabsTrigger>
+            <TabsTrigger key={quarter} value={String(quarter)}>
+              Q{quarter}
+            </TabsTrigger>
           ))}
         </TabsList>
         {[1, 2, 3, 4].map((quarter) => (
@@ -39,7 +41,9 @@ export function QuarterTargetSettings({
               label={`Accounts do Q${quarter}`}
               options={accountOptions}
               selected={accountsByQuarter[quarter] ?? []}
-              onChange={(values) => { if (values.length) onAccountsChange(quarter, values); }}
+              onChange={(values) => {
+                if (values.length) onAccountsChange(quarter, values);
+              }}
               placeholder="Selecione ao menos um account"
               showChips
             />
@@ -53,9 +57,14 @@ export function QuarterTargetSettings({
                     id={`target-${bucket.id}-q${quarter}`}
                     value={targets.byBucket[bucket.id]?.[quarter - 1] ?? 0}
                     onChange={(value) => {
-                      const values: QuarterValues = [...(targets.byBucket[bucket.id] ?? [0, 0, 0, 0])];
+                      const values: QuarterValues = [
+                        ...(targets.byBucket[bucket.id] ?? [0, 0, 0, 0]),
+                      ];
                       values[quarter - 1] = value;
-                      onTargetsChange({ ...targets, byBucket: { ...targets.byBucket, [bucket.id]: values } });
+                      onTargetsChange({
+                        ...targets,
+                        byBucket: { ...targets.byBucket, [bucket.id]: values },
+                      });
                     }}
                   />
                 </div>

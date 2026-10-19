@@ -4,12 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fmtPct, fmtUSD } from "@/lib/sales-data";
-import type {
-  AttainmentResult,
-  AttainmentRow,
-  BucketDefinition,
-  Targets,
-} from "@/lib/targets";
+import type { AttainmentResult, AttainmentRow, BucketDefinition, Targets } from "@/lib/targets";
 import { cn } from "@/lib/utils";
 import { calculateCompensation, type CompensationSettings } from "@/lib/compensation";
 import {
