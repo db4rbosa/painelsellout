@@ -413,7 +413,7 @@ export async function downloadExecutivePdf(
       styles: {
         font: "helvetica",
         fontSize: 8,
-        cellPadding: 2,
+        cellPadding: 1.6,
         overflow: "linebreak",
         textColor: palette.ink,
       },
