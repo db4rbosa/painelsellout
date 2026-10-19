@@ -185,3 +185,16 @@ describe("compensation settings and amounts", () => {
     expect(calculateCompensation(settings, overlapping, result).annual.amount).toBe(71500);
   });
 });
+
+import { reconcilePayments as reconcile } from "./compensation";
+describe("reconcilePayments", () => {
+  it("compares paid per quarter and annual total with accelerator", () => {
+    const r = reconcile(
+      { quarters: [{ amount: 5000 }, { amount: 5000 }, { amount: 5000 }, { amount: 42900 }], annual: { amount: 58500 } },
+      [{ id: "a", quarter: 1, month: 4, year: 2026, amount: 5000 }, { id: "b", quarter: 2, month: 7, year: 2026, amount: 4000 }],
+    );
+    expect(r.quarters[1]!.missing).toBe(1000);
+    expect(r.quarters[0]!.difference).toBe(0);
+    expect(r.annualRemaining).toBe(49500);
+  });
+});
