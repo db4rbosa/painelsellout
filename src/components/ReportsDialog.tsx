@@ -25,7 +25,7 @@ export function ReportsDialog({
       kind: "executive",
       icon: FileBarChart2,
       title: "Relatório executivo",
-      text: "PDF de 1 página com destaques, bolsos e atingimento por quarter.",
+      text: "Resumo em tabelas com destaques, metas, realizado e gap por bolso e quarter.",
     },
     {
       kind: "pdf",
