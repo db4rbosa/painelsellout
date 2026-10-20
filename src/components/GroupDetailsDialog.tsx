@@ -157,9 +157,9 @@ function PartnumberSection({ group }: { group: ReturnType<typeof summarizePartnu
       </TableRow>
       {group.rows.map((period) => (
         <TableRow
-          key={JSON.stringify([period.fiscalYear, period.fiscalQuarter, period.fiscalWeek, period.lob])}
+          key={JSON.stringify([period.fiscalYear, period.fiscalMonth, period.lob])}
         >
-          <TableCell className="whitespace-nowrap">{period.fiscalWeek}</TableCell>
+          <TableCell className="whitespace-nowrap">{period.periodLabel}</TableCell>
           <TableCell className="whitespace-nowrap">Q{period.fiscalQuarter}</TableCell>
           <TableCell>{period.lob}</TableCell>
           <TableCell className="whitespace-nowrap text-right">{fmtUSD(period.revenue)}</TableCell>
