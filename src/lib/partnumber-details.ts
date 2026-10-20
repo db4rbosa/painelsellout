@@ -1,9 +1,25 @@
 import type { SalesRow } from "./sales-data";
 
+const MONTH_ABBR_PT = [
+  "jan",
+  "fev",
+  "mar",
+  "abr",
+  "mai",
+  "jun",
+  "jul",
+  "ago",
+  "set",
+  "out",
+  "nov",
+  "dez",
+] as const;
+
 export type PartnumberPeriodRow = {
   fiscalYear: number;
   fiscalQuarter: number;
-  fiscalWeek: number;
+  fiscalMonth: number;
+  periodLabel: string;
   lob: string;
   revenue: number;
   quantity: number;
@@ -19,10 +35,15 @@ export type PartnumberGroup = {
   totalQuantity: number;
 };
 
+const periodLabelFor = (fiscalYear: number, fiscalMonth: number): string => {
+  const month = MONTH_ABBR_PT[fiscalMonth - 1] ?? "?";
+  return `${month}/${String(fiscalYear % 100).padStart(2, "0")}`;
+};
+
 /**
  * Aggregates the already-scoped rows by partnumber, then by fiscal
- * year/quarter/week and LOB. Periods are sorted by quarter and week in
- * ascending order; partnumbers are sorted by total revenue descending.
+ * year/month and LOB. Periods are sorted by year and month in ascending
+ * order; partnumbers are sorted alphabetically.
  */
 export function summarizePartnumberDetails(rows: SalesRow[]): PartnumberGroup[] {
   const bySku = new Map<
@@ -51,11 +72,12 @@ export function summarizePartnumberDetails(rows: SalesRow[]): PartnumberGroup[] 
       };
       bySku.set(sku, group);
     }
-    const key = JSON.stringify([row.fiscalYear, row.fiscalQuarter, row.fiscalWeek, row.lob]);
+    const key = JSON.stringify([row.fiscalYear, row.fiscalMonth, row.lob]);
     const period = group.periods.get(key) ?? {
       fiscalYear: row.fiscalYear,
       fiscalQuarter: row.fiscalQuarter,
-      fiscalWeek: row.fiscalWeek,
+      fiscalMonth: row.fiscalMonth,
+      periodLabel: periodLabelFor(row.fiscalYear, row.fiscalMonth),
       lob: row.lob,
       revenue: 0,
       quantity: 0,
@@ -76,8 +98,7 @@ export function summarizePartnumberDetails(rows: SalesRow[]): PartnumberGroup[] 
       rows: [...group.periods.values()].sort(
         (a, b) =>
           a.fiscalYear - b.fiscalYear ||
-          a.fiscalQuarter - b.fiscalQuarter ||
-          a.fiscalWeek - b.fiscalWeek ||
+          a.fiscalMonth - b.fiscalMonth ||
           a.lob.localeCompare(b.lob),
       ),
       lobs: [...group.lobs].sort((a, b) => a.localeCompare(b)),
@@ -86,7 +107,7 @@ export function summarizePartnumberDetails(rows: SalesRow[]): PartnumberGroup[] 
       totalRevenue: group.totalRevenue,
       totalQuantity: group.totalQuantity,
     }))
-    .sort((a, b) => b.totalRevenue - a.totalRevenue || a.sku.localeCompare(b.sku));
+    .sort((a, b) => a.sku.localeCompare(b.sku));
 }
 
 export const quarterRangeLabel = (group: PartnumberGroup): string =>
