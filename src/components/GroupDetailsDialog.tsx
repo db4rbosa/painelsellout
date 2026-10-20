@@ -18,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EvolutionChart } from "@/components/EvolutionChart";
-import { summarizeCustomerItems } from "@/lib/customer-detail-items";
+import { quarterRangeLabel, summarizePartnumberDetails } from "@/lib/partnumber-details";
 import {
   DIMENSIONS,
   buildSeries,
@@ -40,6 +40,8 @@ type Props = {
   onOpenChange: (open: boolean) => void;
 };
 
+const fmtQty = (value: number) => new Intl.NumberFormat("pt-BR").format(value);
+
 export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
   const selectedRows = useMemo(
     () =>
@@ -57,12 +59,7 @@ export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
   );
   const revenue = useMemo(() => sum(selectedRows), [selectedRows]);
   const quantity = useMemo(() => sum(selectedRows, "quantity"), [selectedRows]);
-  const detailRows = useMemo(
-    () => [...selectedRows].sort((a, b) => b.revenue - a.revenue),
-    [selectedRows],
-  );
-  const isCustomer = selection?.dimension === "endUser";
-  const customerItems = useMemo(() => summarizeCustomerItems(selectedRows), [selectedRows]);
+  const partnumberGroups = useMemo(() => summarizePartnumberDetails(selectedRows), [selectedRows]);
   const dimensionLabel = selection
     ? DIMENSIONS.find((dimension) => dimension.key === selection.dimension)?.label
     : undefined;
@@ -89,9 +86,7 @@ export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
               <Card>
                 <CardContent className="py-4">
                   <p className="text-xs uppercase text-muted-foreground">Quantidade</p>
-                  <p className="mt-1 text-xl font-semibold">
-                    {new Intl.NumberFormat("pt-BR").format(quantity)}
-                  </p>
+                  <p className="mt-1 text-xl font-semibold">{fmtQty(quantity)}</p>
                 </CardContent>
               </Card>
               <Card>
@@ -115,72 +110,28 @@ export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
 
             <section>
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="font-semibold">{isCustomer ? "Itens vendidos por mês" : "Linhas de venda"}</h3>
-                <Badge variant="secondary">
-                  {isCustomer ? `${customerItems.length} itens` : `${detailRows.length} linhas`}
-                </Badge>
+                <h3 className="font-semibold">Itens vendidos por partnumber</h3>
+                <Badge variant="secondary">{partnumberGroups.length} partnumbers</Badge>
               </div>
               <div className="overflow-x-auto rounded-md border border-border">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Período</TableHead>
-                      {!isCustomer && <TableHead>Account</TableHead>}
-                      {!isCustomer && <TableHead>Cliente Final</TableHead>}
+                      <TableHead>Quarter</TableHead>
                       <TableHead>LOB</TableHead>
-                      <TableHead>{isCustomer ? "Partnumber" : "SKU"}</TableHead>
-                      {!isCustomer && <TableHead>Revenda</TableHead>}
-                      {!isCustomer && <TableHead>Distribuidor</TableHead>}
                       <TableHead className="text-right">Receita</TableHead>
                       <TableHead className="text-right">Qtd.</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {isCustomer ? customerItems.map((item, index) => {
-                      const previous = customerItems[index - 1];
-                      const newPeriod = !previous || previous.fiscalYear !== item.fiscalYear ||
-                        previous.fiscalQuarter !== item.fiscalQuarter || previous.fiscalMonth !== item.fiscalMonth;
-                      return (
-                        <TableRow key={JSON.stringify([item.fiscalYear, item.fiscalQuarter, item.fiscalMonth, item.sku])}
-                          className={newPeriod ? "border-t-2 border-border" : undefined}>
-                          <TableCell className="whitespace-nowrap font-medium">
-                            {item.fiscalYear} · Q{item.fiscalQuarter} · {item.monthLabel}
-                          </TableCell>
-                          <TableCell>{item.lob}</TableCell>
-                          <TableCell className="whitespace-nowrap">
-                            <span className="flex items-center gap-2">
-                              <Package className="size-3.5 shrink-0 text-muted-foreground" /> {item.sku}
-                            </span>
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap text-right font-medium">{fmtUSD(item.revenue)}</TableCell>
-                          <TableCell className="text-right">{new Intl.NumberFormat("pt-BR").format(item.quantity)}</TableCell>
-                        </TableRow>
-                      );
-                    }) : detailRows.map((row, index) => (
-                      <TableRow key={`${row.sku}-${row.fiscalWeek}-${index}`}>
-                        <TableCell className="whitespace-nowrap">
-                          Q{row.fiscalQuarter} · {row.monthLabel}
-                        </TableCell>
-                        <TableCell>{row.account}</TableCell>
-                        <TableCell>{row.endUser}</TableCell>
-                        <TableCell>{row.lob}</TableCell>
-                        <TableCell>
-                          <span className="flex items-center gap-2">
-                            <Package className="size-3.5 text-muted-foreground" /> {row.sku}
-                          </span>
-                        </TableCell>
-                        <TableCell>{row.reseller}</TableCell>
-                        <TableCell>{row.disti}</TableCell>
-                        <TableCell className="text-right font-medium">
-                          {fmtUSD(row.revenue)}
-                        </TableCell>
-                        <TableCell className="text-right">{row.quantity}</TableCell>
-                      </TableRow>
+                    {partnumberGroups.map((group) => (
+                      <PartnumberSection key={group.sku} group={group} />
                     ))}
                   </TableBody>
                 </Table>
               </div>
-              {!detailRows.length ? (
+              {!partnumberGroups.length ? (
                 <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
                   <ReceiptText className="size-4" /> Nenhuma linha encontrada.
                 </div>
@@ -190,5 +141,38 @@ export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PartnumberSection({ group }: { group: ReturnType<typeof summarizePartnumberDetails>[number] }) {
+  return (
+    <>
+      <TableRow className="bg-muted/60 hover:bg-muted/60">
+        <TableCell colSpan={5} className="font-semibold">
+          <span className="flex items-center gap-2">
+            <Package className="size-3.5 shrink-0 text-muted-foreground" />
+            Partnumber&nbsp;{group.sku}
+          </span>
+        </TableCell>
+      </TableRow>
+      {group.rows.map((period) => (
+        <TableRow
+          key={JSON.stringify([period.fiscalYear, period.fiscalQuarter, period.fiscalWeek, period.lob])}
+        >
+          <TableCell className="whitespace-nowrap">{period.fiscalWeek}</TableCell>
+          <TableCell className="whitespace-nowrap">Q{period.fiscalQuarter}</TableCell>
+          <TableCell>{period.lob}</TableCell>
+          <TableCell className="whitespace-nowrap text-right">{fmtUSD(period.revenue)}</TableCell>
+          <TableCell className="text-right">{fmtQty(period.quantity)}</TableCell>
+        </TableRow>
+      ))}
+      <TableRow className="border-t-2 border-border font-semibold">
+        <TableCell>Total</TableCell>
+        <TableCell className="whitespace-nowrap">{quarterRangeLabel(group)}</TableCell>
+        <TableCell>{group.lobs.join(" · ")}</TableCell>
+        <TableCell className="whitespace-nowrap text-right">{fmtUSD(group.totalRevenue)}</TableCell>
+        <TableCell className="text-right">{fmtQty(group.totalQuantity)}</TableCell>
+      </TableRow>
+    </>
   );
 }
