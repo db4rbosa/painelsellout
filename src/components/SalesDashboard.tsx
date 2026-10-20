@@ -301,7 +301,10 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     setSavingState(true);
     try {
-      await persistPrefs(prefsSnapshot.current);
+      const snapshot = prefsSnapshot.current;
+      await persistPrefs(snapshot);
+      syncedPrefsJson.current = JSON.stringify(snapshot);
+      if (prefsSnapshot.current === snapshot) pendingLocalChange.current = false;
     } finally {
       setSavingState(false);
     }
