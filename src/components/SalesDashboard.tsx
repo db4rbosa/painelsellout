@@ -326,9 +326,19 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     };
     prefsSnapshot.current = prefs;
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    const json = JSON.stringify(prefs);
+    if (json === syncedPrefsJson.current) {
+      pendingLocalChange.current = false;
+      return undefined;
+    }
+    pendingLocalChange.current = true;
     saveTimer.current = window.setTimeout(() => {
       setSavingState(true);
       void persistPrefs(prefs)
+        .then(() => {
+          syncedPrefsJson.current = json;
+          if (prefsSnapshot.current === prefs) pendingLocalChange.current = false;
+        })
         .catch(() =>
           setError("Não foi possível salvar suas configurações. Tente salvar novamente."),
         )
