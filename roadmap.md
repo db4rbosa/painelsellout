@@ -65,3 +65,4 @@
 - [x] Mostrar o valor pago no gráfico de quarters e exibir a tabela Calculado vs. Pago antes dele
 
 - [x] Remover a coluna "Faltou pagar" de Calculado vs. Pago (duplicava Diferença); tabela com 4 colunas confirmada no painel conectado
+- [x] Detalhamento de qualquer ranking agrupado por partnumber (semana, quarter crescente, LOB, receita, quantidade e total por PN)
