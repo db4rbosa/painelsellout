@@ -180,15 +180,48 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     setCompensation(prefs.compensation);
   }, []);
 
+  // JSON das preferências já sincronizadas com a conta (evita regravar o que veio do servidor).
+  const syncedPrefsJson = useRef<string>("");
+  const pendingLocalChange = useRef(false);
+
+  const loadStateWithRetry = useCallback(async () => {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await loadState();
+      } catch (error) {
+        lastError = error;
+        await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
+      }
+    }
+    throw lastError;
+  }, [loadState]);
+
   // Restaura a última configuração do usuário e a última planilha importada.
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      let state: Awaited<ReturnType<typeof loadState>>;
       try {
-        const state = await loadState();
-        if (cancelled) return;
-        applyPrefs(normalizePrefs(state.prefs));
+        state = await loadStateWithRetry();
+      } catch {
+        // Sem as configurações da conta, não liberamos o salvamento automático:
+        // isso evitaria sobrescrever as configurações salvas em outro dispositivo.
+        if (!cancelled) {
+          setError(
+            "Não foi possível carregar as configurações da sua conta. Recarregue a página.",
+          );
+          setLoading(false);
+        }
+        return;
+      }
+      if (cancelled) return;
+      const prefs = normalizePrefs(state.prefs);
+      syncedPrefsJson.current = JSON.stringify(prefs);
+      applyPrefs(prefs);
+      setReady(true);
 
+      try {
         if (state.workbook) {
           setFileName(state.workbook.fileName);
           const res = await fetch(state.workbook.url);
@@ -210,16 +243,44 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
               : "Não foi possível carregar a última planilha salva.",
           );
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-          setReady(true);
-        }
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [applyPrefs, loadState]);
+  }, [applyPrefs, loadState, loadStateWithRetry]);
+
+  // Ao voltar para a aba/dispositivo, busca as configurações mais recentes da conta
+  // (por exemplo, alteradas em outro dispositivo), desde que não haja alteração local pendente.
+  useEffect(() => {
+    if (!ready) return undefined;
+    let busy = false;
+    const refresh = async () => {
+      if (document.visibilityState !== "visible" || busy || pendingLocalChange.current) return;
+      busy = true;
+      try {
+        const state = await loadState();
+        if (pendingLocalChange.current) return;
+        const prefs = normalizePrefs(state.prefs);
+        const json = JSON.stringify(prefs);
+        if (json !== syncedPrefsJson.current) {
+          syncedPrefsJson.current = json;
+          applyPrefs(prefs);
+        }
+      } catch {
+        // mantém o estado atual; nova tentativa no próximo foco
+      } finally {
+        busy = false;
+      }
+    };
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [ready, loadState, applyPrefs]);
 
   // Salva a configuração atual (com atraso, para não gravar a cada clique).
   const saveTimer = useRef<number | null>(null);
