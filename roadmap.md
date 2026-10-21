@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Inverter colunas Quarter/Período e Qtd./Receita no detalhamento por partnumber; ordem conferida no diálogo com conta conectada
+
 - [x] Consolidar partnumbers por mês nos detalhes do cliente, ordenar períodos decrescentes e validar somas e apresentação; Riachuelo resumida de 962 linhas para 47 itens
 
 - [x] Mover accounts e metas por quarter para Configurações; salvamento autenticado e visual no celular validados
