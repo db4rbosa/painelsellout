@@ -167,11 +167,11 @@ function PartnumberSection({ group }: { group: ReturnType<typeof summarizePartnu
         </TableRow>
       ))}
       <TableRow className="border-t-2 border-border font-semibold">
-        <TableCell>Total</TableCell>
         <TableCell className="whitespace-nowrap">{quarterRangeLabel(group)}</TableCell>
+        <TableCell>Total</TableCell>
         <TableCell>{group.lobs.join(" · ")}</TableCell>
-        <TableCell className="whitespace-nowrap text-right">{fmtUSD(group.totalRevenue)}</TableCell>
         <TableCell className="text-right">{fmtQty(group.totalQuantity)}</TableCell>
+        <TableCell className="whitespace-nowrap text-right">{fmtUSD(group.totalRevenue)}</TableCell>
       </TableRow>
     </>
   );
