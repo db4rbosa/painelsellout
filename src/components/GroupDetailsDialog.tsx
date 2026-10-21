@@ -117,11 +117,11 @@ export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Período</TableHead>
                       <TableHead>Quarter</TableHead>
+                      <TableHead>Período</TableHead>
                       <TableHead>LOB</TableHead>
-                      <TableHead className="text-right">Receita</TableHead>
                       <TableHead className="text-right">Qtd.</TableHead>
+                      <TableHead className="text-right">Receita</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -159,19 +159,19 @@ function PartnumberSection({ group }: { group: ReturnType<typeof summarizePartnu
         <TableRow
           key={JSON.stringify([period.fiscalYear, period.fiscalMonth, period.lob])}
         >
-          <TableCell className="whitespace-nowrap">{period.periodLabel}</TableCell>
           <TableCell className="whitespace-nowrap">Q{period.fiscalQuarter}</TableCell>
+          <TableCell className="whitespace-nowrap">{period.periodLabel}</TableCell>
           <TableCell>{period.lob}</TableCell>
-          <TableCell className="whitespace-nowrap text-right">{fmtUSD(period.revenue)}</TableCell>
           <TableCell className="text-right">{fmtQty(period.quantity)}</TableCell>
+          <TableCell className="whitespace-nowrap text-right">{fmtUSD(period.revenue)}</TableCell>
         </TableRow>
       ))}
       <TableRow className="border-t-2 border-border font-semibold">
-        <TableCell>Total</TableCell>
         <TableCell className="whitespace-nowrap">{quarterRangeLabel(group)}</TableCell>
+        <TableCell>Total</TableCell>
         <TableCell>{group.lobs.join(" · ")}</TableCell>
-        <TableCell className="whitespace-nowrap text-right">{fmtUSD(group.totalRevenue)}</TableCell>
         <TableCell className="text-right">{fmtQty(group.totalQuantity)}</TableCell>
+        <TableCell className="whitespace-nowrap text-right">{fmtUSD(group.totalRevenue)}</TableCell>
       </TableRow>
     </>
   );
