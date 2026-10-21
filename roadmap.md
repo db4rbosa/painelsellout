@@ -66,3 +66,4 @@
 
 - [x] Remover a coluna "Faltou pagar" de Calculado vs. Pago (duplicava Diferença); tabela com 4 colunas confirmada no painel conectado
 - [x] Detalhamento de qualquer ranking agrupado por partnumber (semana, quarter crescente, LOB, receita, quantidade e total por PN)
+- [x] Detalhamento por partnumber: ordem alfabética dos PNs e período por mês/ano (ex.: out/26)
