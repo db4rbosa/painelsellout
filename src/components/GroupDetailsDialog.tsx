@@ -117,11 +117,11 @@ export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Período</TableHead>
                       <TableHead>Quarter</TableHead>
+                      <TableHead>Período</TableHead>
                       <TableHead>LOB</TableHead>
-                      <TableHead className="text-right">Receita</TableHead>
                       <TableHead className="text-right">Qtd.</TableHead>
+                      <TableHead className="text-right">Receita</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
