@@ -73,6 +73,24 @@ export type Database = {
         }
         Relationships: []
       }
+      product_catalog: {
+        Row: {
+          description: string
+          pn: string
+          updated_at: string
+        }
+        Insert: {
+          description: string
+          pn: string
+          updated_at?: string
+        }
+        Update: {
+          description?: string
+          pn?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
