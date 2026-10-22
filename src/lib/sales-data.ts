@@ -11,6 +11,7 @@ export type SalesRow = {
   shipTo: string;
   endUser: string;
   sku: string;
+  description?: string;
   cbm: string;
   account: string;
   segment: string;
@@ -146,6 +147,16 @@ export function matrixToImportResult(
   const cShipTo = col("Ship to Name");
   const cEndUser = col("End User");
   const cSku = col("Validated SKU Code");
+  const cDescription = col(
+    "Validated SKU Description",
+    "SKU Description",
+    "Product Description",
+    "Material Description",
+    "Item Description",
+    "Description",
+    "Descrição",
+    "Descricao",
+  );
   const cCbm = col("CBM");
   const cAccount = col("Account");
   const cSegment = col("VENDEDORES");
@@ -239,6 +250,7 @@ export function matrixToImportResult(
       shipTo: str(at(cShipTo)),
       endUser: str(at(cEndUser)),
       sku: str(at(cSku)),
+      ...(cDescription >= 0 && str(at(cDescription)) !== "—" ? { description: str(at(cDescription)) } : {}),
       cbm: str(at(cCbm)),
       account: str(at(cAccount)),
       segment: str(at(cSegment)),

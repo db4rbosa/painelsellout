@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Layers3, Package, ReceiptText } from "lucide-react";
+import { Building2, Layers3, Package, ReceiptText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -18,7 +18,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EvolutionChart } from "@/components/EvolutionChart";
-import { quarterRangeLabel, summarizePartnumberDetails } from "@/lib/partnumber-details";
+import {
+  quarterRangeLabel,
+  summarizeEndUserPartnumbers,
+  summarizePartnumberDetails,
+  type PartnumberGroup,
+} from "@/lib/partnumber-details";
 import {
   DIMENSIONS,
   buildSeries,
@@ -60,6 +65,11 @@ export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
   const revenue = useMemo(() => sum(selectedRows), [selectedRows]);
   const quantity = useMemo(() => sum(selectedRows, "quantity"), [selectedRows]);
   const partnumberGroups = useMemo(() => summarizePartnumberDetails(selectedRows), [selectedRows]);
+  const byEndUser = selection !== null && selection.dimension !== "endUser";
+  const customerGroups = useMemo(
+    () => (byEndUser ? summarizeEndUserPartnumbers(selectedRows) : []),
+    [byEndUser, selectedRows],
+  );
   const dimensionLabel = selection
     ? DIMENSIONS.find((dimension) => dimension.key === selection.dimension)?.label
     : undefined;
@@ -110,24 +120,41 @@ export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
 
             <section>
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="font-semibold">Itens vendidos por partnumber</h3>
-                <Badge variant="secondary">{partnumberGroups.length} partnumbers</Badge>
+                <h3 className="font-semibold">Itens Vendidos Por Part Number</h3>
+                <div className="flex gap-2">
+                  {byEndUser ? (
+                    <Badge variant="secondary">{customerGroups.length} clientes finais</Badge>
+                  ) : null}
+                  <Badge variant="secondary">{partnumberGroups.length} part numbers</Badge>
+                </div>
               </div>
               <div className="overflow-x-auto rounded-md border border-border">
-                <Table>
+                <Table className="table-fixed">
+                  <colgroup>
+                    <col className="w-[18%]" />
+                    <col />
+                    <col className="w-[14%]" />
+                    <col className="w-[22%]" />
+                  </colgroup>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Quarter</TableHead>
-                      <TableHead>Período</TableHead>
                       <TableHead>LOB</TableHead>
                       <TableHead className="text-right">Qtd.</TableHead>
                       <TableHead className="text-right">Receita</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {partnumberGroups.map((group) => (
-                      <PartnumberSection key={group.sku} group={group} />
-                    ))}
+                    {byEndUser
+                      ? customerGroups.map((customer) => (
+                          <CustomerSection
+                            key={JSON.stringify([customer.endUser, customer.account])}
+                            customer={customer}
+                          />
+                        ))
+                      : partnumberGroups.map((group) => (
+                          <PartnumberSection key={group.sku} group={group} />
+                        ))}
                   </TableBody>
                 </Table>
               </div>
@@ -144,32 +171,54 @@ export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
   );
 }
 
-function PartnumberSection({ group }: { group: ReturnType<typeof summarizePartnumberDetails>[number] }) {
+function CustomerSection({
+  customer,
+}: {
+  customer: ReturnType<typeof summarizeEndUserPartnumbers>[number];
+}) {
   return (
     <>
-      <TableRow className="bg-muted/60 hover:bg-muted/60">
-        <TableCell colSpan={5} className="font-semibold">
-          <span className="flex items-center gap-2">
+      <TableRow className="bg-primary/15 hover:bg-primary/15">
+        <TableCell colSpan={2} className="font-bold">
+          <span className="flex min-w-0 items-center gap-2" title={`${customer.endUser} · ${customer.account}`}>
+            <Building2 className="size-4 shrink-0 text-primary" />
+            <span className="truncate">{customer.endUser}</span>
+            <span className="shrink-0 text-xs font-normal text-muted-foreground">· {customer.account}</span>
+          </span>
+        </TableCell>
+        <TableCell className="text-right font-bold">{fmtQty(customer.totalQuantity)}</TableCell>
+        <TableCell className="whitespace-nowrap text-right font-bold">{fmtUSD(customer.totalRevenue)}</TableCell>
+      </TableRow>
+      {customer.partnumbers.map((group) => (
+        <PartnumberSection key={group.sku} group={group} />
+      ))}
+    </>
+  );
+}
+
+function PartnumberSection({ group }: { group: PartnumberGroup }) {
+  const label = group.description ? `${group.sku} | ${group.description}` : group.sku;
+  return (
+    <>
+      <TableRow className="bg-accent/40 hover:bg-accent/40">
+        <TableCell colSpan={4} className="max-w-0 font-semibold">
+          <span className="flex min-w-0 items-center gap-2" title={label}>
             <Package className="size-3.5 shrink-0 text-muted-foreground" />
-            Partnumber&nbsp;{group.sku}
+            <span className="truncate">{label}</span>
           </span>
         </TableCell>
       </TableRow>
-      {group.rows.map((period) => (
-        <TableRow
-          key={JSON.stringify([period.fiscalYear, period.fiscalMonth, period.lob])}
-        >
-          <TableCell className="whitespace-nowrap">Q{period.fiscalQuarter}</TableCell>
-          <TableCell className="whitespace-nowrap">{period.periodLabel}</TableCell>
-          <TableCell>{period.lob}</TableCell>
-          <TableCell className="text-right">{fmtQty(period.quantity)}</TableCell>
-          <TableCell className="whitespace-nowrap text-right">{fmtUSD(period.revenue)}</TableCell>
+      {group.rows.map((quarter) => (
+        <TableRow key={JSON.stringify([quarter.fiscalQuarter, quarter.lob])}>
+          <TableCell className="whitespace-nowrap">Q{quarter.fiscalQuarter}</TableCell>
+          <TableCell className="truncate">{quarter.lob}</TableCell>
+          <TableCell className="text-right">{fmtQty(quarter.quantity)}</TableCell>
+          <TableCell className="whitespace-nowrap text-right">{fmtUSD(quarter.revenue)}</TableCell>
         </TableRow>
       ))}
-      <TableRow className="border-t-2 border-border font-semibold">
-        <TableCell className="whitespace-nowrap">{quarterRangeLabel(group)}</TableCell>
-        <TableCell>Total</TableCell>
-        <TableCell>{group.lobs.join(" · ")}</TableCell>
+      <TableRow className="border-t-2 border-border bg-muted font-semibold hover:bg-muted">
+        <TableCell className="whitespace-nowrap">{quarterRangeLabel(group)} · Total</TableCell>
+        <TableCell className="truncate">{group.lobs.join(" · ")}</TableCell>
         <TableCell className="text-right">{fmtQty(group.totalQuantity)}</TableCell>
         <TableCell className="whitespace-nowrap text-right">{fmtUSD(group.totalRevenue)}</TableCell>
       </TableRow>

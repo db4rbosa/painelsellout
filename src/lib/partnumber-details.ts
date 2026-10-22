@@ -1,25 +1,7 @@
 import type { SalesRow } from "./sales-data";
 
-const MONTH_ABBR_PT = [
-  "jan",
-  "fev",
-  "mar",
-  "abr",
-  "mai",
-  "jun",
-  "jul",
-  "ago",
-  "set",
-  "out",
-  "nov",
-  "dez",
-] as const;
-
-export type PartnumberPeriodRow = {
-  fiscalYear: number;
+export type PartnumberQuarterRow = {
   fiscalQuarter: number;
-  fiscalMonth: number;
-  periodLabel: string;
   lob: string;
   revenue: number;
   quantity: number;
@@ -27,7 +9,8 @@ export type PartnumberPeriodRow = {
 
 export type PartnumberGroup = {
   sku: string;
-  rows: PartnumberPeriodRow[];
+  description: string;
+  rows: PartnumberQuarterRow[];
   lobs: string[];
   quarterMin: number;
   quarterMax: number;
@@ -35,21 +18,24 @@ export type PartnumberGroup = {
   totalQuantity: number;
 };
 
-const periodLabelFor = (fiscalYear: number, fiscalMonth: number): string => {
-  const month = MONTH_ABBR_PT[fiscalMonth - 1] ?? "?";
-  return `${month}/${String(fiscalYear % 100).padStart(2, "0")}`;
+export type EndUserPartnumberGroup = {
+  endUser: string;
+  account: string;
+  partnumbers: PartnumberGroup[];
+  totalRevenue: number;
+  totalQuantity: number;
 };
 
 /**
- * Aggregates the already-scoped rows by partnumber, then by fiscal
- * year/month and LOB. Periods are sorted by year and month in ascending
- * order; partnumbers are sorted alphabetically.
+ * Aggregates already-scoped rows by partnumber, then by fiscal quarter and
+ * LOB. Quarters ascend within each partnumber; partnumbers are alphabetical.
  */
 export function summarizePartnumberDetails(rows: SalesRow[]): PartnumberGroup[] {
   const bySku = new Map<
     string,
     {
-      periods: Map<string, PartnumberPeriodRow>;
+      description: string;
+      quarters: Map<string, PartnumberQuarterRow>;
       lobs: Set<string>;
       quarterMin: number;
       quarterMax: number;
@@ -63,7 +49,8 @@ export function summarizePartnumberDetails(rows: SalesRow[]): PartnumberGroup[] 
     let group = bySku.get(sku);
     if (!group) {
       group = {
-        periods: new Map(),
+        description: "",
+        quarters: new Map(),
         lobs: new Set(),
         quarterMin: row.fiscalQuarter,
         quarterMax: row.fiscalQuarter,
@@ -72,19 +59,17 @@ export function summarizePartnumberDetails(rows: SalesRow[]): PartnumberGroup[] 
       };
       bySku.set(sku, group);
     }
-    const key = JSON.stringify([row.fiscalYear, row.fiscalMonth, row.lob]);
-    const period = group.periods.get(key) ?? {
-      fiscalYear: row.fiscalYear,
+    if (!group.description && row.description?.trim()) group.description = row.description.trim();
+    const key = JSON.stringify([row.fiscalQuarter, row.lob]);
+    const quarter = group.quarters.get(key) ?? {
       fiscalQuarter: row.fiscalQuarter,
-      fiscalMonth: row.fiscalMonth,
-      periodLabel: periodLabelFor(row.fiscalYear, row.fiscalMonth),
       lob: row.lob,
       revenue: 0,
       quantity: 0,
     };
-    period.revenue += row.revenue;
-    period.quantity += row.quantity;
-    group.periods.set(key, period);
+    quarter.revenue += row.revenue;
+    quarter.quantity += row.quantity;
+    group.quarters.set(key, quarter);
     group.lobs.add(row.lob);
     group.quarterMin = Math.min(group.quarterMin, row.fiscalQuarter);
     group.quarterMax = Math.max(group.quarterMax, row.fiscalQuarter);
@@ -95,11 +80,9 @@ export function summarizePartnumberDetails(rows: SalesRow[]): PartnumberGroup[] 
   return [...bySku.entries()]
     .map(([sku, group]) => ({
       sku,
-      rows: [...group.periods.values()].sort(
-        (a, b) =>
-          a.fiscalYear - b.fiscalYear ||
-          a.fiscalMonth - b.fiscalMonth ||
-          a.lob.localeCompare(b.lob),
+      description: group.description,
+      rows: [...group.quarters.values()].sort(
+        (a, b) => a.fiscalQuarter - b.fiscalQuarter || a.lob.localeCompare(b.lob),
       ),
       lobs: [...group.lobs].sort((a, b) => a.localeCompare(b)),
       quarterMin: group.quarterMin,
@@ -108,6 +91,30 @@ export function summarizePartnumberDetails(rows: SalesRow[]): PartnumberGroup[] 
       totalQuantity: group.totalQuantity,
     }))
     .sort((a, b) => a.sku.localeCompare(b.sku));
+}
+
+/** Groups rows by End User (kept apart per Account), then by partnumber. Alphabetical. */
+export function summarizeEndUserPartnumbers(rows: SalesRow[]): EndUserPartnumberGroup[] {
+  const byCustomer = new Map<string, SalesRow[]>();
+  for (const row of rows) {
+    const key = JSON.stringify([row.endUser, row.account]);
+    const list = byCustomer.get(key);
+    if (list) list.push(row);
+    else byCustomer.set(key, [row]);
+  }
+  return [...byCustomer.entries()]
+    .map(([key, list]) => {
+      const [endUser, account] = JSON.parse(key) as [string, string];
+      const partnumbers = summarizePartnumberDetails(list);
+      return {
+        endUser,
+        account,
+        partnumbers,
+        totalRevenue: partnumbers.reduce((s, p) => s + p.totalRevenue, 0),
+        totalQuantity: partnumbers.reduce((s, p) => s + p.totalQuantity, 0),
+      };
+    })
+    .sort((a, b) => a.endUser.localeCompare(b.endUser) || a.account.localeCompare(b.account));
 }
 
 export const quarterRangeLabel = (group: PartnumberGroup): string =>
