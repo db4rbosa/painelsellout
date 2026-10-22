@@ -36,6 +36,13 @@
       "when": 1792348790011,
       "tag": "0004_import_history_storage_path",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792677333333,
+      "tag": "0005_product_catalog",
+      "breakpoints": true
     }
   ]
 }
