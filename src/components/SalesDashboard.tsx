@@ -274,7 +274,11 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
           setFileName(state.workbook.fileName);
           // Reuse the already-parsed workbook on this device when it is the same file.
           const cacheKey = `wb:${state.workbook.createdAt}:${state.workbook.fileName}:${state.workbook.fileSize}`;
-          let parsed = await cacheGet<Awaited<ReturnType<typeof parseWorkbookDetailed>>>(cacheKey);
+          const cached = await cacheGet<{
+            key: string;
+            data: Awaited<ReturnType<typeof parseWorkbookDetailed>>;
+          }>("workbook");
+          let parsed = cached?.key === cacheKey ? cached.data : undefined;
           if (!parsed?.rows) {
             const res = await fetch(state.workbook.url);
             if (!res.ok) throw new Error("Não foi possível baixar a última planilha.");
@@ -282,7 +286,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
             parsed = await parseWorkbookDetailed(
               new File([blob], state.workbook.fileName, { type: blob.type }),
             );
-            void cacheSet("wb:last", null).then(() => cacheSet(cacheKey, parsed));
+            void cacheSet("workbook", { key: cacheKey, data: parsed });
           }
           if (!cancelled) {
             setRows(parsed.rows);
