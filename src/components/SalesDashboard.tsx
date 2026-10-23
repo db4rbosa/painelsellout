@@ -41,6 +41,8 @@ import { EvolutionChart } from "@/components/EvolutionChart";
 import { TargetPanel } from "@/components/TargetPanel";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import { GroupDetailsDialog, type GroupDetailSelection } from "@/components/GroupDetailsDialog";
+import { getProductCatalog, saveProductCatalog } from "@/lib/product-catalog.functions";
+import { catalogFromMatrix, normalizePn } from "@/lib/product-catalog";
 import { SystemSettingsSheet } from "@/components/SystemSettingsSheet";
 import { ExecutiveHighlights } from "@/components/ExecutiveHighlights";
 import { ImportHistoryDialog } from "@/components/ImportHistoryDialog";
@@ -131,6 +133,36 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const [accountsByQuarter, setAccountsByQuarter] = useState<QuarterAccounts>({});
   const [compensation, setCompensation] = useState<CompensationSettings>(defaultCompensation);
   const [selectedGroupDetail, setSelectedGroupDetail] = useState<GroupDetailSelection>(null);
+  const [productDescriptions, setProductDescriptions] = useState<Map<string, string>>(new Map());
+  const [catalogStatus, setCatalogStatus] = useState<string | null>(null);
+  useEffect(() => {
+    getProductCatalog()
+      .then(({ items }) => setProductDescriptions(new Map(items.map((i) => [i.pn, i.description]))))
+      .catch(() => undefined);
+  }, []);
+  const handleCatalogFile = async (file: File | undefined) => {
+    if (!file) return;
+    setCatalogStatus("Lendo planilha de produtos…");
+    try {
+      const { readSheetMatrix } = await import("@/lib/xlsx-fast");
+      const items = catalogFromMatrix(readSheetMatrix(new Uint8Array(await file.arrayBuffer())));
+      for (let i = 0; i < items.length; i += 4000) {
+        setCatalogStatus(`Salvando produtos ${Math.min(i + 4000, items.length)}/${items.length}…`);
+        await saveProductCatalog({ data: { items: items.slice(i, i + 4000) } });
+      }
+      setProductDescriptions((prev) => {
+        const next = new Map(prev);
+        for (const item of items) next.set(item.pn, item.description);
+        return next;
+      });
+      setCatalogStatus(`${items.length} produtos importados.`);
+      window.alert(`${items.length} produtos importados. As descrições já aparecem nos detalhes.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Falha ao importar produtos.";
+      setCatalogStatus(message);
+      window.alert(message);
+    }
+  };
   const fetchAiStatus = useServerFn(getAiStatus);
   const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
 
@@ -682,6 +714,24 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
               Importar Planilha
             </span>
           </label>
+          <label className="relative block w-full cursor-pointer" title={catalogStatus ?? undefined}>
+            <input
+              type="file"
+              accept=".xlsx"
+              aria-label="Importar produtos"
+              className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+              onChange={(e) => {
+                void handleCatalogFile(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+            <span className={buttonVariants({ variant: "outline", className: headerActionClass })}>
+              <Upload className="size-4" />
+              <span className="truncate">
+                {catalogStatus?.endsWith("…") ? catalogStatus : "Importar Produtos"}
+              </span>
+            </span>
+          </label>
           {access.isAdmin ? (
             <Button variant="outline" className={headerActionClass} asChild>
               <Link to="/usuarios">
@@ -1114,6 +1164,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
       <GroupDetailsDialog
         selection={selectedGroupDetail}
         rows={scopedRows}
+        descriptions={productDescriptions}
         onOpenChange={(open) => {
           if (!open) setSelectedGroupDetail(null);
         }}
