@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as Char91indexChar93RouteImport } from './routes/[index]'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnalisesRouteImport } from './routes/analises'
 import { Route as CadastroRouteImport } from './routes/cadastro'
@@ -22,6 +23,11 @@ import { Route as AnalisesThreadIdRouteImport } from './routes/analises.$threadI
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 
+const Char91indexChar93Route = Char91indexChar93RouteImport.update({
+  id: '/index',
+  path: '/index',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analises': typeof AnalisesRouteWithChildren
   '/cadastro': typeof CadastroRoute
+  '/index': typeof Char91indexChar93Route
   '/mcp': typeof McpRoute
   '/nova-senha': typeof NovaSenhaRoute
   '/unlock': typeof UnlockRoute
@@ -101,6 +108,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/cadastro': typeof CadastroRoute
+  '/index': typeof Char91indexChar93Route
   '/mcp': typeof McpRoute
   '/nova-senha': typeof NovaSenhaRoute
   '/unlock': typeof UnlockRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/analises': typeof AnalisesRouteWithChildren
   '/cadastro': typeof CadastroRoute
+  '/index': typeof Char91indexChar93Route
   '/mcp': typeof McpRoute
   '/nova-senha': typeof NovaSenhaRoute
   '/unlock': typeof UnlockRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
     | '/'
     | '/analises'
     | '/cadastro'
+    | '/index'
     | '/mcp'
     | '/nova-senha'
     | '/unlock'
@@ -145,6 +155,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/cadastro'
+    | '/index'
     | '/mcp'
     | '/nova-senha'
     | '/unlock'
@@ -159,6 +170,7 @@ export interface FileRouteTypes {
     | '/'
     | '/analises'
     | '/cadastro'
+    | '/index'
     | '/mcp'
     | '/nova-senha'
     | '/unlock'
@@ -174,6 +186,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalisesRoute: typeof AnalisesRouteWithChildren
   CadastroRoute: typeof CadastroRoute
+  Char91indexChar93Route: typeof Char91indexChar93Route
   McpRoute: typeof McpRoute
   NovaSenhaRoute: typeof NovaSenhaRoute
   UnlockRoute: typeof UnlockRoute
@@ -185,6 +198,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/index': {
+      id: '/index'
+      path: '/index'
+      fullPath: '/index'
+      preLoaderRoute: typeof Char91indexChar93RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -290,6 +310,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalisesRoute: AnalisesRouteWithChildren,
   CadastroRoute: CadastroRoute,
+  Char91indexChar93Route: Char91indexChar93Route,
   McpRoute: McpRoute,
   NovaSenhaRoute: NovaSenhaRoute,
   UnlockRoute: UnlockRoute,
