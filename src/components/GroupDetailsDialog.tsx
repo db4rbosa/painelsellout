@@ -56,9 +56,12 @@ export function GroupDetailsDialog({ selection, rows, descriptions, onOpenChange
         ? rows.filter((row) => {
             if (row[selection.dimension] !== selection.value) return false;
             return selection.account === undefined || row.account === selection.account;
+          }).map((row) => {
+            const description = descriptions?.get(normalizePn(row.sku));
+            return description ? { ...row, description } : row;
           })
         : [],
-    [rows, selection],
+    [rows, selection, descriptions],
   );
   const monthly = useMemo(
     () => buildSeries(selectedRows, "lob", "month", "revenue", 8),
