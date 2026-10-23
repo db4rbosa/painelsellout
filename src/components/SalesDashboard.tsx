@@ -43,6 +43,7 @@ import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import { GroupDetailsDialog, type GroupDetailSelection } from "@/components/GroupDetailsDialog";
 import { getProductCatalog, saveProductCatalog } from "@/lib/product-catalog.functions";
 import { catalogFromMatrix, normalizePn } from "@/lib/product-catalog";
+import { cacheGet, cacheSet } from "@/lib/local-cache";
 import { SystemSettingsSheet } from "@/components/SystemSettingsSheet";
 import { ExecutiveHighlights } from "@/components/ExecutiveHighlights";
 import { ImportHistoryDialog } from "@/components/ImportHistoryDialog";
@@ -136,9 +137,24 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const [productDescriptions, setProductDescriptions] = useState<Map<string, string>>(new Map());
   const [catalogStatus, setCatalogStatus] = useState<string | null>(null);
   useEffect(() => {
-    getProductCatalog()
-      .then(({ items }) => setProductDescriptions(new Map(items.map((i) => [i.pn, i.description]))))
-      .catch(() => undefined);
+    let cancelled = false;
+    // Show the cached catalog instantly, then refresh it in the background after the dashboard settles.
+    void cacheGet<[string, string][]>("catalog").then((cached) => {
+      if (!cancelled && cached?.length) setProductDescriptions(new Map(cached));
+    });
+    const timer = setTimeout(() => {
+      getProductCatalog()
+        .then(({ items }) => {
+          const entries = items.map((i) => [i.pn, i.description] as [string, string]);
+          if (!cancelled) setProductDescriptions(new Map(entries));
+          void cacheSet("catalog", entries);
+        })
+        .catch(() => undefined);
+    }, 3000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, []);
   const handleCatalogFile = async (file: File | undefined) => {
     if (!file) return;
@@ -256,12 +272,22 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
       try {
         if (state.workbook) {
           setFileName(state.workbook.fileName);
-          const res = await fetch(state.workbook.url);
-          if (!res.ok) throw new Error("Não foi possível baixar a última planilha.");
-          const blob = await res.blob();
-          const parsed = await parseWorkbookDetailed(
-            new File([blob], state.workbook.fileName, { type: blob.type }),
-          );
+          // Reuse the already-parsed workbook on this device when it is the same file.
+          const cacheKey = `wb:${state.workbook.createdAt}:${state.workbook.fileName}:${state.workbook.fileSize}`;
+          const cached = await cacheGet<{
+            key: string;
+            data: Awaited<ReturnType<typeof parseWorkbookDetailed>>;
+          }>("workbook");
+          let parsed = cached?.key === cacheKey ? cached.data : undefined;
+          if (!parsed?.rows) {
+            const res = await fetch(state.workbook.url);
+            if (!res.ok) throw new Error("Não foi possível baixar a última planilha.");
+            const blob = await res.blob();
+            parsed = await parseWorkbookDetailed(
+              new File([blob], state.workbook.fileName, { type: blob.type }),
+            );
+            void cacheSet("workbook", { key: cacheKey, data: parsed });
+          }
           if (!cancelled) {
             setRows(parsed.rows);
             setImportResult(parsed);
