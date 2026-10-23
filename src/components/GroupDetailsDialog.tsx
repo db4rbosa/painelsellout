@@ -17,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { normalizePn } from "@/lib/product-catalog";
 import { EvolutionChart } from "@/components/EvolutionChart";
 import {
   quarterRangeLabel,
@@ -42,12 +43,13 @@ export type GroupDetailSelection = {
 type Props = {
   selection: GroupDetailSelection;
   rows: SalesRow[];
+  descriptions?: Map<string, string>;
   onOpenChange: (open: boolean) => void;
 };
 
 const fmtQty = (value: number) => new Intl.NumberFormat("pt-BR").format(value);
 
-export function GroupDetailsDialog({ selection, rows, onOpenChange }: Props) {
+export function GroupDetailsDialog({ selection, rows, descriptions, onOpenChange }: Props) {
   const selectedRows = useMemo(
     () =>
       selection
