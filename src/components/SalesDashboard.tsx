@@ -156,8 +156,11 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
         return next;
       });
       setCatalogStatus(`${items.length} produtos importados.`);
+      window.alert(`${items.length} produtos importados. As descrições já aparecem nos detalhes.`);
     } catch (error) {
-      setCatalogStatus(error instanceof Error ? error.message : "Falha ao importar produtos.");
+      const message = error instanceof Error ? error.message : "Falha ao importar produtos.";
+      setCatalogStatus(message);
+      window.alert(message);
     }
   };
   const fetchAiStatus = useServerFn(getAiStatus);
@@ -724,7 +727,9 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
             />
             <span className={buttonVariants({ variant: "outline", className: headerActionClass })}>
               <Upload className="size-4" />
-              Importar Produtos
+              <span className="truncate">
+                {catalogStatus?.endsWith("…") ? catalogStatus : "Importar Produtos"}
+              </span>
             </span>
           </label>
           {access.isAdmin ? (
