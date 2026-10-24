@@ -1,5 +1,9 @@
 # Roadmap
 
+- [ ] Reunir sellout, produtos e histórico em Importações; registrar produtos e permitir excluir arquivos antigos com confirmação
+- [ ] Padronizar detalhes de Cliente Final e remover quatro opções de Agrupar por
+- [ ] Validar importação, histórico, limpeza e apresentação com conta conectada
+
 - [x] Inverter colunas Quarter/Período e Qtd./Receita no detalhamento por partnumber; ordem conferida no diálogo com conta conectada
 
 - [x] Consolidar partnumbers por mês nos detalhes do cliente, ordenar períodos decrescentes e validar somas e apresentação; Riachuelo resumida de 962 linhas para 47 itens
