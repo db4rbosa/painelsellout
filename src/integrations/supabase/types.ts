@@ -167,6 +167,7 @@ export type Database = {
           file_name: string
           file_size: number
           id: string
+          import_kind: string
           issue_count: number
           storage_path: string | null
           total_revenue: number
@@ -179,6 +180,7 @@ export type Database = {
           file_name: string
           file_size?: number
           id?: string
+          import_kind?: string
           issue_count?: number
           storage_path?: string | null
           total_revenue?: number
@@ -191,6 +193,7 @@ export type Database = {
           file_name?: string
           file_size?: number
           id?: string
+          import_kind?: string
           issue_count?: number
           storage_path?: string | null
           total_revenue?: number

@@ -1,0 +1,2 @@
+ALTER TABLE public.workbook_imports ADD COLUMN import_kind text NOT NULL DEFAULT 'sellout';
+ALTER TABLE public.workbook_imports ADD CONSTRAINT workbook_imports_kind_check CHECK (import_kind IN ('sellout', 'products'));

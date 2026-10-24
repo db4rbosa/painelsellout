@@ -29,3 +29,4 @@
 - Attach gateway correlation headers only to gateway-backed streams; direct providers bypass run-ID waiting to prevent unresolved responses.
 - Calculate monthly customer maxima from scoped transactions grouped by customer, Account and fiscal month, with sales and services separate, so annual rankings cannot stand in for monthly comparisons.
 - Store the product catalog (PN → DESC INGLES) as a shared server-only table imported in chunks and join it to sales by normalized SKU at display time, so sales imports stay independent of catalog updates.
+- Use workbook_imports for both sales and product file history; delete only archived files after authenticated confirmation, preserve the active sales file and catalog data so cleanup cannot change analysis.

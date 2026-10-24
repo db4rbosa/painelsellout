@@ -101,6 +101,8 @@ export type ImportHistoryEntry = ImportStats & {
   uploadedBy: string;
   createdAt: string;
   downloadable: boolean;
+  kind: "sellout" | "products";
+  active: boolean;
 };
 
 const safeInt = (v: unknown) =>
@@ -118,6 +120,9 @@ export const listImportHistory = createServerFn({ method: "GET" }).handler(async
     .order("created_at", { ascending: false })
     .limit(100);
   if (error) throw new Error("Não foi possível carregar o histórico de importações.");
+  const { data: active, error: activeError } = await supabaseAdmin.from("workbooks").select("storage_path");
+  if (activeError) throw new Error("Não foi possível identificar a planilha ativa.");
+  const activePaths = new Set((active ?? []).map((row) => row.storage_path));
   return (data ?? []).map((r): ImportHistoryEntry => ({
     id: r.id,
     fileName: r.file_name,
@@ -129,6 +134,8 @@ export const listImportHistory = createServerFn({ method: "GET" }).handler(async
     issueCount: r.issue_count,
     totalRevenue: Number(r.total_revenue ?? 0),
     downloadable: Boolean(r.storage_path),
+    kind: r.import_kind === "products" ? "products" : "sellout",
+    active: Boolean(r.storage_path && activePaths.has(r.storage_path)),
   }));
 });
 
@@ -198,4 +205,44 @@ export const getImportDownloadUrl = createServerFn({ method: "POST" })
       .createSignedUrl(row.storage_path, 120, { download: row.file_name });
     if (!signed?.signedUrl) throw new Error("Arquivo não disponível para download.");
     return { url: signed.signedUrl };
+  });
+
+export const registerProductImport = createServerFn({ method: "POST" })
+  .inputValidator((data: { path: string; fileName: string; fileSize: number; validRows: number }) => data)
+  .handler(async ({ data }) => {
+    const { requireIdentity } = await import("./identity.server");
+    const identity = await requireIdentity();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("workbook_imports").insert({
+      import_kind: "products",
+      file_name: data.fileName.slice(0, 255),
+      file_size: safeInt(data.fileSize),
+      valid_rows: safeInt(data.validRows),
+      storage_path: data.path,
+      uploaded_by: identity.name || identity.email,
+    });
+    if (error) throw new Error("Não foi possível registrar a importação dos produtos.");
+    return { ok: true as const };
+  });
+
+export const deleteImport = createServerFn({ method: "POST" })
+  .inputValidator((data: { id: string }) => ({ id: String(data?.id ?? "") }))
+  .handler(async ({ data }) => {
+    const { requireIdentity } = await import("./identity.server");
+    await requireIdentity();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await supabaseAdmin.from("workbook_imports")
+      .select("storage_path").eq("id", data.id).maybeSingle();
+    if (error || !row) throw new Error("Importação não encontrada.");
+    if (row.storage_path) {
+      const { data: active, error: activeError } = await supabaseAdmin.from("workbooks")
+        .select("id").eq("storage_path", row.storage_path).limit(1);
+      if (activeError) throw new Error("Não foi possível verificar a planilha ativa.");
+      if (active?.length) throw new Error("A planilha de vendas ativa não pode ser excluída. Importe outra antes.");
+      const { error: storageError } = await supabaseAdmin.storage.from(BUCKET).remove([row.storage_path]);
+      if (storageError) throw new Error("Não foi possível excluir o arquivo.");
+    }
+    const { error: deleteError } = await supabaseAdmin.from("workbook_imports").delete().eq("id", data.id);
+    if (deleteError) throw new Error("Não foi possível excluir o registro do histórico.");
+    return { ok: true as const };
   });

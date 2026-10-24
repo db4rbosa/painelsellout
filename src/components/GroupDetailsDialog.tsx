@@ -70,7 +70,7 @@ export function GroupDetailsDialog({ selection, rows, descriptions, onOpenChange
   const revenue = useMemo(() => sum(selectedRows), [selectedRows]);
   const quantity = useMemo(() => sum(selectedRows, "quantity"), [selectedRows]);
   const partnumberGroups = useMemo(() => summarizePartnumberDetails(selectedRows), [selectedRows]);
-  const byEndUser = selection !== null && selection.dimension !== "endUser";
+  const byEndUser = selection !== null;
   const customerGroups = useMemo(
     () => (byEndUser ? summarizeEndUserPartnumbers(selectedRows) : []),
     [byEndUser, selectedRows],

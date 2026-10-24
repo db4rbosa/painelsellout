@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { History, Loader2 } from "lucide-react";
+import { History, Loader2, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import {
   getImportDownloadUrl,
+  deleteImport,
   listImportHistory,
   type ImportHistoryEntry,
 } from "@/lib/dashboard-state.functions";
@@ -34,10 +35,27 @@ const when = (iso: string) =>
 export function ImportHistoryDialog({ triggerClassName }: { triggerClassName?: string }) {
   const fetchHistory = useServerFn(listImportHistory);
   const fetchDownload = useServerFn(getImportDownloadUrl);
+  const removeImport = useServerFn(deleteImport);
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<ImportHistoryEntry[] | null>(null);
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<ImportHistoryEntry | null>(null);
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    const item = pendingDelete;
+    setDeleting(item.id);
+    setError("");
+    try {
+      await removeImport({ data: { id: item.id } });
+      setItems((previous) => previous?.filter((entry) => entry.id !== item.id) ?? []);
+      setPendingDelete(null);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Não foi possível excluir a planilha.");
+    } finally { setDeleting(null); }
+  };
 
   const download = async (id: string) => {
     setDownloading(id);
@@ -74,10 +92,21 @@ export function ImportHistoryDialog({ triggerClassName }: { triggerClassName?: s
           <DialogHeader>
             <DialogTitle>Histórico de importações</DialogTitle>
             <DialogDescription>
-              Auditoria de cada planilha enviada. A primeira linha é a base ativa no painel.
+              Sellout e produtos. A planilha de vendas ativa é preservada na limpeza.
             </DialogDescription>
           </DialogHeader>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {pendingDelete ? (
+            <div role="alert" className="space-y-3 border-b border-border pb-4">
+              <p className="break-words text-sm">Excluir “{pendingDelete.fileName}” e seu registro do histórico? O arquivo será removido para todos os usuários. Os dados de produtos já importados serão mantidos.</p>
+              <div className="flex gap-2">
+                <Button variant="outline" disabled={deleting !== null} onClick={() => setPendingDelete(null)}>Cancelar</Button>
+                <Button variant="destructive" disabled={deleting !== null} onClick={() => void confirmDelete()}>
+                  {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} Excluir planilha
+                </Button>
+              </div>
+            </div>
+          ) : null}
           {items === null ? (
             <div className="flex justify-center py-10">
               <Loader2 className="size-6 animate-spin text-primary" />
@@ -93,18 +122,20 @@ export function ImportHistoryDialog({ triggerClassName }: { triggerClassName?: s
                   <TableRow>
                     <TableHead>Data</TableHead>
                     <TableHead>Arquivo</TableHead>
+                    <TableHead>Tipo</TableHead>
                     <TableHead>Enviado por</TableHead>
                     <TableHead className="text-right">Linhas válidas</TableHead>
                     <TableHead className="text-right">Excluídas</TableHead>
                     <TableHead className="text-right">Receita</TableHead>
+                    <TableHead className="text-right">Limpeza</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.map((item, index) => (
+                  {items.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="whitespace-nowrap">
                         {when(item.createdAt)}
-                        {index === 0 ? (
+                        {item.active ? (
                           <Badge className="ml-2" variant="secondary">
                             Ativa
                           </Badge>
@@ -112,9 +143,10 @@ export function ImportHistoryDialog({ triggerClassName }: { triggerClassName?: s
                       </TableCell>
                       <TableCell className="max-w-56 whitespace-normal break-words">
                         {item.downloadable ? (
-                          <button
+                           <Button
+                             variant="link"
                             type="button"
-                            className="text-left font-medium text-primary underline-offset-4 hover:underline disabled:opacity-60"
+                             className="h-auto max-w-full whitespace-normal p-0 text-left font-medium"
                             disabled={downloading === item.id}
                             onClick={() => void download(item.id)}
                             title="Baixar planilha"
@@ -123,7 +155,7 @@ export function ImportHistoryDialog({ triggerClassName }: { triggerClassName?: s
                             {downloading === item.id ? (
                               <Loader2 className="ml-1 inline size-3 animate-spin" />
                             ) : null}
-                          </button>
+                           </Button>
                         ) : (
                           <span title="Arquivo não disponível para download">{item.fileName}</span>
                         )}
@@ -131,6 +163,7 @@ export function ImportHistoryDialog({ triggerClassName }: { triggerClassName?: s
                           {size(item.fileSize)}
                         </span>
                       </TableCell>
+                      <TableCell>{item.kind === "products" ? "Produtos" : "Sellout"}</TableCell>
                       <TableCell>{item.uploadedBy || "—"}</TableCell>
                       <TableCell className="text-right">{num(item.validRows)}</TableCell>
                       <TableCell className="text-right">
@@ -141,7 +174,14 @@ export function ImportHistoryDialog({ triggerClassName }: { triggerClassName?: s
                         )}
                       </TableCell>
                       <TableCell className="text-right whitespace-nowrap">
-                        {fmtUSD(item.totalRevenue)}
+                        {item.kind === "products" ? "—" : fmtUSD(item.totalRevenue)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" aria-label={`Excluir ${item.fileName}`}
+                          title={item.active ? "Importe outra planilha antes de excluir a ativa" : "Excluir planilha"}
+                          disabled={item.active || deleting !== null} onClick={() => setPendingDelete(item)}>
+                          <Trash2 className="size-4 text-destructive" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -5,19 +5,17 @@ import {
   AlertTriangle,
   BarChart3,
   Building2,
-  FileDown,
   KeyRound,
   Loader2,
   LogOut,
   MessageSquareText,
-  Sheet,
   Target,
   Upload,
   Users,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
@@ -46,7 +44,8 @@ import { catalogFromMatrix, normalizePn } from "@/lib/product-catalog";
 import { cacheGet, cacheSet } from "@/lib/local-cache";
 import { SystemSettingsSheet } from "@/components/SystemSettingsSheet";
 import { ExecutiveHighlights } from "@/components/ExecutiveHighlights";
-import { ImportHistoryDialog } from "@/components/ImportHistoryDialog";
+import { ImportsDialog } from "@/components/ImportsDialog";
+import { CHART_DIMENSIONS, chartGrouping } from "@/lib/chart-dimensions";
 import { buildExecutiveHighlights } from "@/lib/executive-highlights";
 import { defaultCompensation, type CompensationSettings } from "@/lib/compensation";
 import {
@@ -89,6 +88,7 @@ import {
   createWorkbookUpload,
   getDashboardState,
   registerWorkbook,
+  registerProductImport,
   saveDashboardPrefs,
 } from "@/lib/dashboard-state.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -108,6 +108,9 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const savePrefs = useServerFn(saveDashboardPrefs);
   const prepareUpload = useServerFn(createWorkbookUpload);
   const saveWorkbook = useServerFn(registerWorkbook);
+  const saveCatalog = useServerFn(saveProductCatalog);
+  const fetchCatalog = useServerFn(getProductCatalog);
+  const saveProductImport = useServerFn(registerProductImport);
 
   const [rows, setRows] = useState<SalesRow[]>([]);
   const [fileName, setFileName] = useState("");
@@ -143,7 +146,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
       if (!cancelled && cached?.length) setProductDescriptions(new Map(cached));
     });
     const timer = setTimeout(() => {
-      getProductCatalog()
+      fetchCatalog()
         .then(({ items }) => {
           const entries = items.map((i) => [i.pn, i.description] as [string, string]);
           if (!cancelled) setProductDescriptions(new Map(entries));
@@ -155,17 +158,23 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, []);
+  }, [fetchCatalog]);
   const handleCatalogFile = async (file: File | undefined) => {
     if (!file) return;
     setCatalogStatus("Lendo planilha de produtos…");
     try {
       const { readSheetMatrix } = await import("@/lib/xlsx-fast");
       const items = catalogFromMatrix(readSheetMatrix(new Uint8Array(await file.arrayBuffer())));
+      if (!items.length) throw new Error("Nenhum produto válido encontrado nas colunas PN e DESC INGLES.");
+      const upload = await prepareUpload({ data: { fileName: file.name } });
+      const { error: uploadError } = await supabase.storage.from(upload.bucket)
+        .uploadToSignedUrl(upload.path, upload.token, file);
+      if (uploadError) throw new Error("Não foi possível salvar a planilha de produtos.");
       for (let i = 0; i < items.length; i += 4000) {
         setCatalogStatus(`Salvando produtos ${Math.min(i + 4000, items.length)}/${items.length}…`);
-        await saveProductCatalog({ data: { items: items.slice(i, i + 4000) } });
+        await saveCatalog({ data: { items: items.slice(i, i + 4000) } });
       }
+      await saveProductImport({ data: { path: upload.path, fileName: file.name, fileSize: file.size, validRows: items.length } });
       setProductDescriptions((prev) => {
         const next = new Map(prev);
         for (const item of items) next.set(item.pn, item.description);
@@ -215,7 +224,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
   const applyPrefs = useCallback((prefs: DashboardPrefs) => {
     setAccounts(prefs.accounts);
     setFilters(prefs.filters);
-    setGroupBy(prefs.groupBy);
+    setGroupBy(chartGrouping(prefs.groupBy));
     setGranularity(prefs.granularity);
     setMetric(prefs.metric);
     setChartType(prefs.chartType);
@@ -719,45 +728,11 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
             onCompensationChange={setCompensation}
             onSave={saveSettingsNow}
           />
-          <ImportHistoryDialog triggerClassName={headerActionClass} />
+          <ImportsDialog triggerClassName={headerActionClass} busy={loading} catalogStatus={catalogStatus}
+            onSales={handleFile} onProducts={handleCatalogFile} />
           {rows.length ? (
             <ReportsDialog triggerClassName={headerActionClass} onExport={handleReport} />
           ) : null}
-          <label
-            className="relative block w-full cursor-pointer"
-            onPointerEnter={() => void preloadWorkbookParser()}
-          >
-            <input
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              aria-label="Importar planilha"
-              className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-              onFocus={() => void preloadWorkbookParser()}
-              onChange={(e) => handleFile(e.target.files?.[0])}
-            />
-            <span className={buttonVariants({ className: headerActionClass })}>
-              <Upload className="size-4" />
-              Importar Planilha
-            </span>
-          </label>
-          <label className="relative block w-full cursor-pointer" title={catalogStatus ?? undefined}>
-            <input
-              type="file"
-              accept=".xlsx"
-              aria-label="Importar produtos"
-              className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-              onChange={(e) => {
-                void handleCatalogFile(e.target.files?.[0]);
-                e.target.value = "";
-              }}
-            />
-            <span className={buttonVariants({ variant: "outline", className: headerActionClass })}>
-              <Upload className="size-4" />
-              <span className="truncate">
-                {catalogStatus?.endsWith("…") ? catalogStatus : "Importar Produtos"}
-              </span>
-            </span>
-          </label>
           {access.isAdmin ? (
             <Button variant="outline" className={headerActionClass} asChild>
               <Link to="/usuarios">
@@ -941,7 +916,7 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Sem agrupamento (total)</SelectItem>
-                        {DIMENSIONS.map((d) => (
+                        {CHART_DIMENSIONS.map((d) => (
                           <SelectItem key={d.key} value={d.key}>
                             {d.label}
                           </SelectItem>
