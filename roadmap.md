@@ -1,8 +1,8 @@
 # Roadmap
 
-- [ ] Reunir sellout, produtos e histórico em Importações; registrar produtos e permitir excluir arquivos antigos com confirmação
-- [ ] Padronizar detalhes de Cliente Final e remover quatro opções de Agrupar por
-- [ ] Validar importação, histórico, limpeza e apresentação com conta conectada
+- [x] Reunir sellout, produtos e histórico em Importações; registrar produtos e permitir excluir arquivos antigos com confirmação
+- [x] Padronizar detalhes de Cliente Final e remover quatro opções de Agrupar por
+- [x] Validar importação de produtos, histórico, limpeza e apresentação com conta conectada; 18 testes aprovados, planilha ativa protegida e arquivos de teste removidos
 
 - [x] Inverter colunas Quarter/Período e Qtd./Receita no detalhamento por partnumber; ordem conferida no diálogo com conta conectada
 
