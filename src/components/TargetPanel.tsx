@@ -221,7 +221,7 @@ export function TargetPanel({
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Pagamento acumulado com acelerador.
+                    {quarter === 4 ? "Pagamento acumulado no quarter com acelerador." : quarter === 1 ? "Pagamento acumulado no quarter." : "Pagamento acumulado no quarter."}
                   </p>
                 </CardContent>
               </Card>
