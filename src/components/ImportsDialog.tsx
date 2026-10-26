@@ -36,7 +36,7 @@ export function ImportsDialog({ triggerClassName, busy, catalogStatus, onSales, 
             <Upload className="size-5 shrink-0 text-primary" /><span>Importar Planilha de Sellout</span>
           </Button>
           <Button variant="outline" className={optionClass} disabled={busy || running} onClick={() => productsInput.current?.click()}>
-            <Package className="size-5 shrink-0 text-primary" /><span>Importar Produtos</span>
+            <Package className="size-5 shrink-0 text-primary" /><span>Importar Planilha de Produtos</span>
           </Button>
           <ImportHistoryDialog triggerClassName={optionClass} />
         </div>

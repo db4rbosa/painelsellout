@@ -85,7 +85,7 @@ export function ImportHistoryDialog({ triggerClassName }: { triggerClassName?: s
   return (
     <>
       <Button variant="outline" className={triggerClassName} onClick={() => void openDialog()}>
-        <History className="size-4" /> Histórico
+        <History className="size-4" /> Histórico de Importações
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] max-w-5xl overflow-hidden">
