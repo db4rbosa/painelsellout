@@ -157,16 +157,41 @@ export function calculateCompensation(
   };
   const regular = [0, 1, 2, 3].map((index) => period(index));
   const annual = period();
-  // Q4 carries the annual true-up: accelerator over the full Q1–Q4 actual minus Q1–Q3 already paid.
-  const paidBeforeQ4 = regular.slice(0, 3).every((q) => q.amount !== null)
-    ? regular.slice(0, 3).reduce((sum, q) => sum + (q.amount ?? 0), 0) : null;
-  const q4 = regular[3]!;
-  const trueUp = annual.amount !== null && paidBeforeQ4 !== null && q4.amount !== null
-    ? Math.max(0, annual.amount - paidBeforeQ4 - q4.amount) : null;
-  const quarters = regular.map((quarter, index) => index === 3
-    ? { ...quarter, regularAmount: quarter.amount, trueUp: trueUp ?? 0,
-        amount: quarter.amount === null || trueUp === null ? quarter.amount : quarter.amount + trueUp }
-    : { ...quarter, regularAmount: quarter.amount, trueUp: 0 });
+  // SAP/Callidus YTD rule: through quarter k, attainment = YTD actual / YTD target per bucket,
+  // capped at 100% for Q1–Q3; quarter pays cumulative due minus what was due before (catch-up).
+  const ytd = (k: number, accelerated: boolean) => {
+    const base = annualBase * settings.quarterShares.slice(0, k + 1).reduce((s, v) => s + v, 0) / 100;
+    let amount = 0;
+    for (const bucket of buckets) {
+      const weight = weights[bucket.id] ?? 0;
+      if (weight === 0) continue;
+      const data = annualAttainment.buckets.find((item) => item.id === bucket.id);
+      const rows = data?.quarters.slice(0, k + 1) ?? [];
+      const target = rows.reduce((s, r) => s + r.target, 0);
+      if (!(target > 0)) return null;
+      const actual = rows.reduce((s, r) => s + r.actual, 0);
+      amount += base * weight / 100 * payoutRate(actual / target, accelerated);
+    }
+    return issues.length ? null : amount;
+  };
+  const cumulativeDue = [0, 1, 2].map((k) => ytd(k, false));
+  const quarters = regular.map((quarter, index) => {
+    if (index < 3) {
+      const cum = cumulativeDue[index] ?? null;
+      const prevMax = cumulativeDue.slice(0, index).reduce<number | null>(
+        (m, v) => (m === null || v === null ? null : Math.max(m, v)), 0);
+      const amount = cum === null || prevMax === null ? null : Math.max(0, cum - prevMax);
+      const catchUp = amount === null || quarter.amount === null ? 0 : Math.max(0, amount - quarter.amount);
+      const accel = ytd(index, true);
+      const heldAccelerator = accel === null || cum === null ? 0 : Math.max(0, accel - cum);
+      return { ...quarter, regularAmount: quarter.amount, catchUp, cumulativeDue: cum, heldAccelerator, trueUp: 0, amount };
+    }
+    const paidBefore = cumulativeDue.every((v) => v !== null)
+      ? Math.max(...(cumulativeDue as number[]), 0) : null;
+    const amount = annual.amount === null || paidBefore === null ? null : Math.max(0, annual.amount - paidBefore);
+    const trueUp = amount === null || quarter.amount === null ? 0 : Math.max(0, amount - quarter.amount);
+    return { ...quarter, regularAmount: quarter.amount, catchUp: 0, cumulativeDue: annual.amount, heldAccelerator: 0, trueUp, amount };
+  });
   const quarterlyTotal = quarters.every((quarter) => quarter.amount !== null)
     ? quarters.reduce((sum, quarter) => sum + (quarter.amount ?? 0), 0) : null;
   return { annualBase, issues, quarters, annual, quarterlyTotal };
