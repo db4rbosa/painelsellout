@@ -113,6 +113,23 @@ describe("compensation settings and amounts", () => {
     expect(result.quarters[3]?.amount).toBeCloseTo(42900, 6);
     expect(result.quarterlyTotal).toBeCloseTo(58500, 6);
   });
+  it("Q2 recovers Q1 shortfall when YTD attainment reaches 100%", () => {
+    const annual = {
+      buckets: [{ id: "m1", name: "M1", months: [], total: { actual: 300, target: 300, attainment: 1 },
+        quarters: [
+          { label: "Q1", actual: 50, target: 100, attainment: 0.5 },
+          { label: "Q2", actual: 150, target: 100, attainment: 1.5 },
+          { label: "Q3", actual: 100, target: 100, attainment: 1 },
+          { label: "Q4", actual: 0, target: 0, attainment: null },
+        ] }],
+    };
+    const one = [{ id: "m1", name: "M1", lineOfBusiness: [] }];
+    const s = { ...settings, quarterShares: [25, 25, 25, 25] as [number, number, number, number], bucketWeights: { m1: 100 } };
+    const r = calculateCompensation(s, one, annual);
+    expect(r.quarters[0]?.amount).toBe(0);
+    expect(r.quarters[1]?.amount).toBe(13000);
+    expect(r.quarters[1]?.catchUp).toBe(6500);
+  });
   it("calculates annual OPI using 13 salaries and percentage", () =>
     expect(calculateCompensation(settings, buckets, attainment(1, 1)).annualBase).toBe(26000));
   it("distributes OPI by configurable quarter percentages", () =>
