@@ -130,6 +130,15 @@ describe("compensation settings and amounts", () => {
     expect(r.quarters[1]?.amount).toBe(13000);
     expect(r.quarters[1]?.catchUp).toBe(6500);
   });
+  it("Q4 deducts recorded payments instead of theoretical amounts", () => {
+    const paid = { ...settings, payments: [
+      { id: "a", quarter: 1, month: 3, year: 2026, amount: 5000 },
+      { id: "b", quarter: 2, month: 6, year: 2026, amount: 5000 },
+      { id: "c", quarter: 3, month: 9, year: 2026, amount: 5000 },
+    ] };
+    // annual 58500 − 15000 recorded = 43500
+    expect(calculateCompensation(paid, buckets, attainment(1.5, 1.5)).quarters[3]?.amount).toBeCloseTo(43500, 6);
+  });
   it("calculates annual OPI using 13 salaries and percentage", () =>
     expect(calculateCompensation(settings, buckets, attainment(1, 1)).annualBase).toBe(26000));
   it("distributes OPI by configurable quarter percentages", () =>

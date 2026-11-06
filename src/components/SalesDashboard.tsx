@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { APP_VERSION } from "@/lib/version";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -696,9 +697,14 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
     <main className="mx-auto max-w-[1500px] px-5 py-8 md:px-8">
       <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-            SALES OUT · ANALYTICS
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+              SALES OUT · ANALYTICS
+            </p>
+            <span className="rounded-full border border-primary/40 px-2 py-0.5 text-[10px] font-semibold text-primary">
+              v{APP_VERSION}
+            </span>
+          </div>
           <h1 className="mt-2 text-3xl font-bold md:text-4xl">Painel de Sell-Out e Metas</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             Olá, {access.name}. Sua última configuração e a última planilha importada são

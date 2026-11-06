@@ -175,19 +175,27 @@ export function calculateCompensation(
     return issues.length ? null : amount;
   };
   const cumulativeDue = [0, 1, 2].map((k) => ytd(k, false));
+  // Hybrid rule: prior quarters deduct the officially recorded payment when one exists,
+  // otherwise the theoretical amount calculated from the spreadsheet.
+  const paidByQuarter = [1, 2, 3, 4].map((q) => {
+    const list = (settings.payments ?? []).filter((p) => p.quarter === q);
+    return list.length ? list.reduce((s, p) => s + p.amount, 0) : null;
+  });
+  const deducted: (number | null)[] = [];
+  const priorDeducted = (index: number) =>
+    deducted.slice(0, index).reduce<number | null>((s, v) => (s === null || v === null ? null : s + v), 0);
   const quarters = regular.map((quarter, index) => {
     if (index < 3) {
       const cum = cumulativeDue[index] ?? null;
-      const prevMax = cumulativeDue.slice(0, index).reduce<number | null>(
-        (m, v) => (m === null || v === null ? null : Math.max(m, v)), 0);
-      const amount = cum === null || prevMax === null ? null : Math.max(0, cum - prevMax);
+      const prev = priorDeducted(index);
+      const amount = cum === null || prev === null ? null : Math.max(0, cum - prev);
+      deducted.push(paidByQuarter[index] ?? amount);
       const catchUp = amount === null || quarter.amount === null ? 0 : Math.max(0, amount - quarter.amount);
       const accel = ytd(index, true);
       const heldAccelerator = accel === null || cum === null ? 0 : Math.max(0, accel - cum);
       return { ...quarter, regularAmount: quarter.amount, catchUp, cumulativeDue: cum, heldAccelerator, trueUp: 0, amount };
     }
-    const paidBefore = cumulativeDue.every((v) => v !== null)
-      ? Math.max(...(cumulativeDue as number[]), 0) : null;
+    const paidBefore = priorDeducted(3);
     const amount = annual.amount === null || paidBefore === null ? null : Math.max(0, annual.amount - paidBefore);
     const trueUp = amount === null || quarter.amount === null ? 0 : Math.max(0, amount - quarter.amount);
     return { ...quarter, regularAmount: quarter.amount, catchUp: 0, cumulativeDue: annual.amount, heldAccelerator: 0, trueUp, amount };
