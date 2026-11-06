@@ -148,14 +148,25 @@ export function PaymentReconciliationCard({
               </tr>
             </thead>
             <tbody>
-              {r.quarters.map((q) => (
+              {r.quarters.map((q) => {
+                const info = result.quarters[q.quarter - 1];
+                const notes = [
+                  info && info.catchUp > 0.005 ? `recuperação YTD ${compensationMoney(info.catchUp)}` : "",
+                  info && info.heldAccelerator > 0.005 ? `acelerador represado p/ Q4 ${compensationMoney(info.heldAccelerator)}` : "",
+                  info && info.trueUp > 0.005 ? `true-up anual ${compensationMoney(info.trueUp)}` : "",
+                ].filter(Boolean);
+                return (
                 <tr key={q.quarter} className="border-t border-border">
-                  <td className="py-2 pr-3">Q{q.quarter}{q.quarter === 4 ? " (inclui acelerador)" : ""}</td>
+                  <td className="py-2 pr-3">
+                    Q{q.quarter}{q.quarter === 4 ? " (inclui acelerador)" : ""}
+                    {notes.length ? <div className="text-xs text-muted-foreground">{notes.join(" · ")}</div> : null}
+                  </td>
                   <td className="py-2 pr-3 text-right tabular-nums">{compensationMoney(q.calculated)}</td>
                   <td className="py-2 pr-3 text-right tabular-nums">{compensationMoney(q.paid)}</td>
                   <td className={`py-2 text-right tabular-nums ${tone(q.difference)}`}>{compensationMoney(q.difference)}</td>
                 </tr>
-              ))}
+                );
+              })}
               <tr className="border-t-2 border-border font-semibold">
                 <td className="py-2 pr-3">Ano (com acelerador)</td>
                 <td className="py-2 pr-3 text-right tabular-nums">{compensationMoney(r.annualDue)}</td>
@@ -166,7 +177,7 @@ export function PaymentReconciliationCard({
           </table>
         </div>
         <p className="text-xs text-muted-foreground">
-          Diferença positiva = falta pagar; negativa = pago a mais. A conta final do ano usa o total anual com acelerador menos tudo o que já foi pago. Cadastre os pagamentos em Configurações.
+          Regra SAP: cada quarter usa o atingimento acumulado no ano (YTD), com teto de 100% até o Q3, e recupera o que ficou para trás nos quarters anteriores. O acelerador acima de 100% fica represado e é pago no Q4. Diferença positiva = falta pagar; negativa = pago a mais. A conta final do ano usa o total anual com acelerador menos tudo o que já foi pago. Cadastre os pagamentos em Configurações.
         </p>
       </CardContent>
     </Card>
