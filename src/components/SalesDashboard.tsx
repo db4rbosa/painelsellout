@@ -1147,23 +1147,24 @@ export function SalesDashboard({ access }: { access: AccessInfo }) {
                 compensation={compensation}
                 annualAttainment={annualAttainment}
               />
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle className="text-base">Realizado vs. Meta Acumulada</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <EvolutionChart
-                    data={cumulativeAttainment}
-                    keys={attainment.buckets.flatMap((bucket) => [
-                      `${bucket.name} · realizado`,
-                      `${bucket.name} · meta`,
-                    ])}
-                    type="line"
-                    stacked={false}
-                    valueFormatter={fmtUSD}
-                  />
-                </CardContent>
-              </Card>
+              <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                {attainment.buckets.map((bucket) => (
+                  <Card key={bucket.name}>
+                    <CardHeader>
+                      <CardTitle className="text-base">Realizado vs. Meta Acumulada · {bucket.name}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <EvolutionChart
+                        data={cumulativeAttainment}
+                        keys={[`${bucket.name} · realizado`, `${bucket.name} · meta`]}
+                        type="line"
+                        stacked={false}
+                        valueFormatter={fmtUSD}
+                      />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </TabsContent>
           </Tabs>
         </>
