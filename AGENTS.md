@@ -30,3 +30,5 @@
 - Calculate monthly customer maxima from scoped transactions grouped by customer, Account and fiscal month, with sales and services separate, so annual rankings cannot stand in for monthly comparisons.
 - Store the product catalog (PN → DESC INGLES) as a shared server-only table imported in chunks and join it to sales by normalized SKU at display time, so sales imports stay independent of catalog updates.
 - Use workbook_imports for both sales and product file history; delete only archived files after authenticated confirmation, preserve the active sales file and catalog data so cleanup cannot change analysis.
+- Keep the app version in src/lib/version.ts and bump it on every delivered change, so users can see which release they are running.
+- Deduct recorded official payments (else theoretical amounts) for prior quarters in compensation, so projections track the real remaining balance.
