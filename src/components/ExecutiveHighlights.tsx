@@ -53,13 +53,23 @@ export function ExecutiveHighlights({ data }: { data: Highlights }) {
             </p>
             <Badge variant={health.variant}>{health.label}</Badge>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {data.target > 0
-              ? data.gap > 0
-                ? `Faltam ${fmtUSD(data.gap)} para 100%`
-                : "Meta do período atingida"
-              : "Informe metas para acompanhar o gap"}
-          </p>
+          {data.bucketHealth.length > 0 ? (
+            <ul className="flex flex-col gap-1">
+              {data.bucketHealth.map((b) => (
+                <li key={b.name} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="truncate">
+                    <strong>{b.name}</strong> ·{" "}
+                    {b.attainment === null ? "—" : pct(b.attainment)}
+                  </span>
+                  <Badge variant={HEALTH[b.health].variant} className="shrink-0">
+                    {HEALTH[b.health].label}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">Informe metas para acompanhar o gap</p>
+          )}
         </Item>
         <Item icon={Activity} title="Bolsos em destaque">
           {data.leader ? (
@@ -79,27 +89,37 @@ export function ExecutiveHighlights({ data }: { data: Highlights }) {
             <p className="text-sm text-muted-foreground">Sem metas por bolso informadas</p>
           )}
         </Item>
-        <Item icon={Crown} title="Principal cliente">
-          {data.topCustomer ? (
-            <>
-              <p className="truncate font-semibold" title={data.topCustomer.name}>
-                {data.topCustomer.name}
-              </p>
-              <p className="truncate text-sm text-muted-foreground">
-                {fmtUSD(data.topCustomer.revenue)} · {pct(data.topCustomer.share)} da receita ·{" "}
-                {data.topCustomer.account}
-              </p>
-            </>
+        <Item icon={Crown} title="Principais clientes">
+          {data.topCustomers.length > 0 ? (
+            <ol className="flex flex-col gap-1">
+              {data.topCustomers.map((c, i) => (
+                <li key={`${c.account}-${c.name}`} className="truncate text-sm" title={c.name}>
+                  <span className="text-muted-foreground">{i + 1}. </span>
+                  <strong>{c.name}</strong>
+                  <span className="text-muted-foreground">
+                    {" "}
+                    · {fmtUSD(c.revenue)} · {pct(c.share)}
+                  </span>
+                </li>
+              ))}
+            </ol>
           ) : (
             <p className="text-sm text-muted-foreground">Sem vendas no escopo</p>
           )}
         </Item>
-        <Item icon={CalendarRange} title="Pico de vendas">
-          {data.peakMonth ? (
-            <>
-              <p className="font-display text-xl font-semibold">{data.peakMonth.label}</p>
-              <p className="text-sm text-muted-foreground">{fmtUSD(data.peakMonth.revenue)}</p>
-            </>
+        <Item icon={CalendarRange} title="Picos de vendas">
+          {data.peakMonths.length > 0 ? (
+            <ol className="flex flex-col gap-1">
+              {data.peakMonths.map((m, i) => (
+                <li key={m.label} className="flex items-baseline justify-between gap-2 text-sm">
+                  <span>
+                    <span className="text-muted-foreground">{i + 1}. </span>
+                    <strong>{m.label}</strong>
+                  </span>
+                  <span className="text-muted-foreground">{fmtUSD(m.revenue)}</span>
+                </li>
+              ))}
+            </ol>
           ) : (
             <p className="text-sm text-muted-foreground">Sem vendas no escopo</p>
           )}

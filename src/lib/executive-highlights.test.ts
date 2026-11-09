@@ -37,4 +37,23 @@ describe("executive highlights", () => {
     expect(h.topCustomer).toMatchObject({ name: "Beta", share: 0.5 });
     expect(h.peakMonth).toEqual({ label: "Jan", revenue: 70 });
   });
+
+  it("reports health per bucket, top 3 customers and top 3 peak months", () => {
+    const attainment: AttainmentResult = {
+      buckets: [bucket("M1", 80, 100), bucket("M4", 60, 50)],
+    };
+    const rows = [
+      row({ endUser: "A1", account: "A", revenue: 40, fiscalMonth: 1, monthLabel: "Jan" }),
+      row({ endUser: "A2", account: "A", revenue: 30, fiscalMonth: 2, monthLabel: "Feb" }),
+      row({ endUser: "A3", account: "A", revenue: 20, fiscalMonth: 3, monthLabel: "Mar" }),
+      row({ endUser: "A4", account: "A", revenue: 10, fiscalMonth: 4, monthLabel: "Apr" }),
+    ];
+    const h = buildExecutiveHighlights(rows, attainment);
+    expect(h.bucketHealth).toEqual([
+      { name: "M1", attainment: 0.8, gap: 20, health: "attention" },
+      { name: "M4", attainment: 1.2, gap: 0, health: "above" },
+    ]);
+    expect(h.topCustomers.map((c) => c.name)).toEqual(["A1", "A2", "A3"]);
+    expect(h.peakMonths.map((m) => m.label)).toEqual(["Jan", "Feb", "Mar"]);
+  });
 });
