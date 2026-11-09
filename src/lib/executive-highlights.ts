@@ -3,6 +3,13 @@ import type { AttainmentResult } from "./targets";
 
 export type GoalHealth = "above" | "onTrack" | "attention" | "noTarget";
 
+export type BucketHealth = {
+  name: string;
+  attainment: number | null;
+  gap: number;
+  health: GoalHealth;
+};
+
 export type ExecutiveHighlights = {
   actual: number;
   target: number;
@@ -11,8 +18,11 @@ export type ExecutiveHighlights = {
   health: GoalHealth;
   leader: { name: string; attainment: number } | null;
   laggard: { name: string; attainment: number; gap: number } | null;
+  bucketHealth: BucketHealth[];
   topCustomer: { name: string; account: string; revenue: number; share: number } | null;
+  topCustomers: { name: string; account: string; revenue: number; share: number }[];
   peakMonth: { label: string; revenue: number } | null;
+  peakMonths: { label: string; revenue: number }[];
 };
 
 /** Classifica a saúde da meta: ≥100% acima, ≥90% no ritmo, abaixo disso atenção. */
@@ -56,8 +66,20 @@ export function buildExecutiveHighlights(
     m.revenue += row.revenue;
     months.set(row.fiscalMonth, m);
   }
-  const top = [...customers.values()].sort((a, b) => b.revenue - a.revenue)[0];
-  const peak = [...months.values()].sort((a, b) => b.revenue - a.revenue)[0];
+  const topCustomers = [...customers.values()]
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 3)
+    .map((c) => ({ ...c, share: revenue !== 0 ? c.revenue / revenue : 0 }));
+  const peakMonths = [...months.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 3);
+  const top = topCustomers[0];
+  const peak = peakMonths[0];
+
+  const bucketHealth: BucketHealth[] = attainment.buckets.map((bucket) => ({
+    name: bucket.name,
+    attainment: bucket.total.attainment,
+    gap: Math.max(0, bucket.total.target - bucket.total.actual),
+    health: goalHealth(bucket.total.attainment),
+  }));
 
   return {
     actual,
@@ -67,9 +89,10 @@ export function buildExecutiveHighlights(
     health: goalHealth(ratio),
     leader: ranked[0] ? { name: ranked[0].name, attainment: ranked[0].attainment } : null,
     laggard: ranked.length > 1 ? (ranked[ranked.length - 1] ?? null) : null,
-    topCustomer: top
-      ? { ...top, share: revenue !== 0 ? top.revenue / revenue : 0 }
-      : null,
+    bucketHealth,
+    topCustomer: top ?? null,
+    topCustomers,
     peakMonth: peak ?? null,
+    peakMonths,
   };
 }
